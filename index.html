@@ -1359,9 +1359,7 @@
 
   function signInWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(e => {
-      openModal({ type: 'alert', title: 'Sign-in failed', message: e.message || String(e) });
-    });
+    auth.signInWithRedirect(provider);
   }
   function signOut() {
     openModal({
@@ -2700,6 +2698,10 @@
 
   function init() {
     render();
+    // Handle the redirect result from Google sign-in
+    auth.getRedirectResult().catch(e => {
+      console.error('Redirect sign-in error:', e);
+    });
     auth.onAuthStateChanged(async (user) => {
       currentUser = user;
       state.user = user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null;
