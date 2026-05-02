@@ -1081,11 +1081,9 @@
   // ============================================================
   // Categories
   // ============================================================
-  const CATEGORIES = [
-    { id: 'theoretical', name: 'Theoretical foundations of computer science and mathematics' },
-    { id: 'software', name: 'Software, computing and information systems' },
-  ];
-  const DEFAULT_CATEGORY = 'theoretical';
+  function getDefaultCatId() {
+    return state.categories.length > 0 ? state.categories[0].id : '';
+  }
 
   function getSetsByCategory(catId) {
     return state.sets
@@ -1099,14 +1097,13 @@
   }
 
   function backfillSetCategoriesAndPositions() {
-    // Ensure every set has a valid category
+    const defaultId = getDefaultCatId();
     for (const s of state.sets) {
-      if (!s.category || !CATEGORIES.find(c => c.id === s.category)) {
-        s.category = DEFAULT_CATEGORY;
+      if (!s.category || !state.categories.find(c => c.id === s.category)) {
+        s.category = defaultId;
       }
     }
-    // Ensure every set has a position; assign to those missing it (newest at end)
-    for (const cat of CATEGORIES) {
+    for (const cat of state.categories) {
       const positioned = state.sets
         .filter(s => s.category === cat.id && s.position != null)
         .sort((a, b) => a.position - b.position);
@@ -1169,6 +1166,14 @@
     await batch.commit();
   }
 
+  function catsRef() { return fsdb.collection('users').doc(currentUser.uid).collection('categories'); }
+  async function dbGetCategories() {
+    const snap = await catsRef().get();
+    return snap.docs.map(d => d.data()).sort((a, b) => (a.position || 0) - (b.position || 0));
+  }
+  async function dbCreateCategory(cat) { await catsRef().doc(cat.id).set(cat); }
+  async function dbDeleteCategory(id)  { await catsRef().doc(id).delete(); }
+
   // ============================================================
   // IndexedDB layer — kept read-only for local data migration
   // ============================================================
@@ -1220,7 +1225,7 @@
           id: s.id, name: s.name,
           createdAt: s.createdAt || Date.now(),
           cardCount: 0,
-          category: s.category || DEFAULT_CATEGORY,
+          category: s.category || getDefaultCatId(),
           position: s.position != null ? s.position : 0,
         };
         await dbCreateSet(setDoc);
@@ -1279,7 +1284,7 @@
           name: oldSet.name,
           createdAt: oldSet.createdAt || Date.now(),
           cardCount: 0,
-          category: DEFAULT_CATEGORY,
+          category: getDefaultCatId(),
         };
         await dbCreateSet(newSet);
         for (const oldCard of (oldSet.cards || [])) {
@@ -1330,6 +1335,7 @@
   let state = {
     booted: false,
     sets: [],
+    categories: [],
     view: 'home',
     currentSetId: null,
     currentSetCards: [],
@@ -1439,8 +1445,25 @@
   // ============================================================
   function getSet(id) { return state.sets.find(s => s.id === id); }
 
+  async function createCategory(name) {
+    const maxPos = state.categories.length > 0
+      ? Math.max(...state.categories.map(c => c.position || 0))
+      : -1;
+    const cat = { id: uid(), name: name.trim(), createdAt: Date.now(), position: maxPos + 1 };
+    await dbCreateCategory(cat);
+    state.categories.push(cat);
+    render();
+    return cat;
+  }
+  async function deleteCategory(id) {
+    if (state.sets.some(s => s.category === id)) return;
+    await dbDeleteCategory(id);
+    state.categories = state.categories.filter(c => c.id !== id);
+    render();
+  }
+
   async function createSet(name, category) {
-    const cat = CATEGORIES.find(c => c.id === category) ? category : DEFAULT_CATEGORY;
+    const cat = state.categories.find(c => c.id === category) ? category : getDefaultCatId();
     const sameCatSets = state.sets.filter(s => s.category === cat);
     const maxPos = sameCatSets.length > 0
       ? Math.max(...sameCatSets.map(s => s.position == null ? 0 : s.position))
@@ -1683,7 +1706,7 @@
   }
 
   function computeDropTarget(x, y) {
-    for (const cat of CATEGORIES) {
+    for (const cat of state.categories) {
       const gridEl = document.querySelector('[data-cat-grid="' + cat.id + '"]');
       if (!gridEl) continue;
       const r = gridEl.getBoundingClientRect();
@@ -1721,12 +1744,12 @@
     if (!set) return;
 
     const groups = {};
-    for (const cat of CATEGORIES) {
+    for (const cat of state.categories) {
       groups[cat.id] = state.sets
         .filter(s => s.category === cat.id && s.id !== set.id)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
     }
-    const targetGroup = groups[newCategory] || groups[DEFAULT_CATEGORY];
+    const targetGroup = groups[newCategory] || groups[getDefaultCatId()];
     const idx = Math.max(0, Math.min(newIndex, targetGroup.length));
 
     // Skip if the set is already at this exact slot
@@ -1741,7 +1764,7 @@
     set.category = newCategory;
     targetGroup.splice(idx, 0, set);
 
-    for (const cat of CATEGORIES) {
+    for (const cat of state.categories) {
       const list = (cat.id === newCategory) ? targetGroup : groups[cat.id];
       list.forEach((s, i) => { s.position = i; });
     }
@@ -1901,7 +1924,7 @@
   function closeMenu() { state.menu = null; render(); }
 
   function promptCreateSet(category) {
-    const cat = CATEGORIES.find(c => c.id === category);
+    const cat = state.categories.find(c => c.id === category);
     openModal({
       type: 'prompt',
       title: 'New set',
@@ -1911,7 +1934,7 @@
       onConfirm: async (value) => {
         const name = (value || '').trim();
         if (!name) return;
-        const newSet = await createSet(name, cat ? cat.id : DEFAULT_CATEGORY);
+        const newSet = await createSet(name, cat ? cat.id : getDefaultCatId());
         closeModal();
         await openSet(newSet.id);
       },
@@ -2021,9 +2044,29 @@
 
     root.appendChild(header);
 
-    for (const cat of CATEGORIES) {
+    for (const cat of state.categories) {
       root.appendChild(renderCategorySection(cat));
     }
+
+    const newCatBtn = el('button', {
+      className: 'btn btn-ghost',
+      type: 'button',
+      style: 'margin: 4px 0 16px; font-size: 14px;',
+      onclick: () => openModal({
+        type: 'prompt',
+        title: 'New category',
+        placeholder: 'Category name',
+        confirmLabel: 'Create',
+        onConfirm: async (value) => {
+          const name = (value || '').trim();
+          if (!name) return;
+          closeModal();
+          await createCategory(name);
+        },
+      }),
+    });
+    newCatBtn.innerHTML = Icons.plus + '<span>New category</span>';
+    root.appendChild(newCatBtn);
 
     if (totalSets === 0) {
       const importBtn = el('button', {
@@ -2052,6 +2095,26 @@
     headerRow.innerHTML =
       '<h2 class="category-title">' + escapeHtml(cat.name) + '</h2>' +
       '<span class="category-count">' + sets.length + ' ' + (sets.length === 1 ? 'set' : 'sets') + '</span>';
+
+    if (sets.length === 0) {
+      const delBtn = el('button', {
+        className: 'icon-btn',
+        type: 'button',
+        'aria-label': 'Delete category',
+        style: 'color: var(--muted);',
+        onclick: () => openModal({
+          type: 'confirm',
+          title: 'Delete "' + cat.name + '"?',
+          message: 'This category is empty and will be permanently removed.',
+          confirmLabel: 'Delete',
+          danger: true,
+          onConfirm: async () => { closeModal(); await deleteCategory(cat.id); },
+        }),
+      });
+      delBtn.innerHTML = Icons.trash;
+      headerRow.appendChild(delBtn);
+    }
+
     section.appendChild(headerRow);
 
     const grid = el('div', { className: 'sets-grid' });
@@ -2685,6 +2748,10 @@
   // ============================================================
   async function loadUserData() {
     try {
+      state.categories = await dbGetCategories();
+      if (state.categories.length === 0) {
+        await createCategory('General');
+      }
       state.sets = await dbGetAllSets();
       const before = JSON.stringify(state.sets.map(s => ({ id: s.id, c: s.category, p: s.position })));
       backfillSetCategoriesAndPositions();
