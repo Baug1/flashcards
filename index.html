@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4efe6;
+    --surface: #fffefb;
+    --surface-2: #ebe5d7;
+    --ink: #1c1917;
+    --ink-soft: #44403c;
+    --muted: #78716c;
+    --border: #e0d9c8;
+    --accent: #2d5a3d;
+    --accent-soft: rgba(45, 90, 61, 0.08);
+    --ok: #15803d;
+    --ok-soft: #dcfce7;
+    --ok-strong: #bbf7d0;
+    --nok: #b91c1c;
+    --nok-soft: #fee2e2;
+    --nok-strong: #fecaca;
+    --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.06);
+    --shadow-md: 0 4px 12px rgba(28, 25, 23, 0.06), 0 2px 4px rgba(28, 25, 23, 0.04);
+    --shadow-lg: 0 24px 48px rgba(28, 25, 23, 0.14), 0 8px 16px rgba(28, 25, 23, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overscroll-behavior: none; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(45, 90, 61, 0.05) 0%, transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(45, 90, 61, 0.04) 0%, transparent 45%);
+    background-attachment: fixed;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  #app {
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0 4px;
+    min-height: 64px;
+  }
+
+  .icon-btn {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface-2); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  .topbar-title {
+    flex: 1;
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .home-header { padding: 24px 0 28px; }
+  .home-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(40px, 9vw, 56px);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  .home-title em { font-style: italic; font-weight: 400; color: var(--accent); }
+  .home-subtitle { color: var(--muted); font-size: 16px; }
+  .home-storage {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .home-storage-bar {
+    flex: 1;
+    max-width: 140px;
+    height: 3px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .home-storage-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+  .home-storage-fill.warn { background: #b45309; }
+  .home-storage-fill.danger { background: var(--nok); }
+
+  .sets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .set-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    overflow: hidden;
+  }
+  .set-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(45, 90, 61, 0.35);
+  }
+  .set-tile:active { transform: translateY(0); }
+
+  .set-tile-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 19px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    padding-right: 28px;
+  }
+  .set-tile-meta {
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .set-tile-meta::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  .set-tile-menu {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .set-tile-menu:hover { background: var(--surface-2); color: var(--ink); }
+  .set-tile-menu svg { width: 16px; height: 16px; }
+
+  .set-tile-add {
+    background: transparent;
+    border: 1.5px dashed var(--border);
+    box-shadow: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    flex-direction: column;
+    gap: 8px;
+  }
+  .set-tile-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .set-tile-add svg { width: 28px; height: 28px; }
+  .set-tile-add span { font-size: 14px; font-weight: 500; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px 32px;
+    color: var(--muted);
+  }
+  .empty-state-mark {
+    font-family: 'Fraunces', serif;
+    font-size: 64px;
+    font-style: italic;
+    color: var(--accent);
+    opacity: 0.4;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .empty-state-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 6px;
+    font-style: italic;
+    font-weight: 400;
+  }
+  .empty-state-subtitle { font-size: 15px; }
+
+  .set-header { padding: 4px 0 20px; }
+  .set-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(30px, 7vw, 40px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 6px;
+    overflow-wrap: break-word;
+  }
+  .set-meta {
+    color: var(--muted);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .set-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .study-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    color: var(--muted);
+    font-size: 14px;
+    user-select: none;
+  }
+  .study-options input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent, #3b82f6);
+  }
+  .study-options label {
+    cursor: pointer;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 15px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.1s, background 0.15s, color 0.15s;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: white;
+    box-shadow: var(--shadow-sm);
+    flex: 1;
+  }
+  .btn-accent:hover:not(:disabled) { background: #234a31; }
+
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    flex: 1;
+  }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .btn-primary:hover:not(:disabled) { background: #2c2724; }
+
+  .btn-large { padding: 16px 22px; font-size: 16px; border-radius: 14px; }
+  .btn svg { width: 18px; height: 18px; }
+
+  .cards-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 4px 0 12px;
+  }
+
+  .cards-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .card-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 10px 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s;
+  }
+  .card-row:hover { border-color: rgba(45, 90, 61, 0.25); }
+
+  .card-row-thumb {
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .card-row-label {
+    flex: 1;
+    font-weight: 500;
+    font-size: 15px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+  }
+  .card-row-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .card-row-delete {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .card-row-delete:hover { background: var(--nok-soft); color: var(--nok); }
+  .card-row-delete svg { width: 16px; height: 16px; }
+
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+    animation: slideIn 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .form-card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+  .form-row + .form-row { margin-top: 14px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-family: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .file-drop {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    color: var(--muted);
+    display: block;
+  }
+  .file-drop:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .file-drop svg { width: 28px; height: 28px; margin: 0 auto 8px; display: block; }
+  .file-drop-text { font-size: 14px; font-weight: 500; }
+  .file-drop-hint { font-size: 12px; margin-top: 4px; opacity: 0.8; }
+  .file-drop input { display: none; }
+
+  .file-preview {
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .file-preview img {
+    width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    display: block;
+  }
+  .file-preview-meta {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(28, 25, 23, 0.85);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(8px);
+    font-weight: 500;
+  }
+  .file-preview-replace {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(28, 25, 23, 0.85);
+    color: white;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .file-preview-replace:hover { background: rgba(28, 25, 23, 0.95); }
+
+  .paste-btn {
+    margin-top: 8px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .paste-btn:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .paste-btn:active:not(:disabled) { transform: scale(0.98); }
+  .paste-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .paste-btn svg { width: 16px; height: 16px; }
+
+  .form-actions { display: flex; gap: 10px; margin-top: 18px; }
+
+  .study-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+  }
+
+  .study-progress { text-align: center; padding: 4px 0 20px; }
+  .study-round-tag {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .study-progress-text {
+    color: var(--muted);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .study-progress-bar {
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 12px auto 0;
+    max-width: 320px;
+  }
+  .study-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .flashcard-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 0 24px;
+    min-height: 380px;
+  }
+
+  .flashcard-container {
+    perspective: 1400px;
+    width: 100%;
+    max-width: 1200px;
+    max-height: 136vh;
+    aspect-ratio: var(--card-aspect, 4 / 3);
+    cursor: pointer;
+    margin: 0 auto;
+  }
+
+  .flashcard {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+
+  .flashcard-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 22px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flashcard-front {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px 24px;
+    text-align: center;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .flashcard-front-hint {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .flashcard-front-label {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(28px, 6.5vw, 44px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .flashcard-tap-icon {
+    color: var(--muted);
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .flashcard-tap-icon svg { width: 16px; height: 16px; }
+
+  .flashcard-back {
+    transform: rotateY(180deg);
+    background: #fffefb;
+    padding: 20px;
+  }
+  .flashcard-back img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .study-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding-top: 4px;
+    transition: opacity 0.35s, transform 0.35s;
+  }
+  .study-actions.hidden-soft {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+  }
+
+  .study-btn {
+    padding: 18px;
+    border-radius: 16px;
+    border: none;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.1s, background 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .study-btn:active { transform: scale(0.96); }
+  .study-btn svg { width: 20px; height: 20px; }
+
+  .study-btn-nok { background: var(--nok-soft); color: var(--nok); }
+  .study-btn-nok:hover { background: var(--nok-strong); }
+  .study-btn-ok { background: var(--ok-soft); color: var(--ok); }
+  .study-btn-ok:hover { background: var(--ok-strong); }
+
+  .done-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    gap: 20px;
+  }
+  .done-mark {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background: var(--ok-soft);
+    color: var(--ok);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
+  }
+  .done-mark svg { width: 48px; height: 48px; }
+  @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+  .done-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(32px, 8vw, 42px);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .done-title em { font-style: italic; color: var(--accent); }
+  .done-subtitle { color: var(--muted); max-width: 320px; }
+
+  .done-stats {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .done-stat { padding: 12px 22px; text-align: center; border-radius: 12px; }
+  .done-stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .done-stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .done-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+    margin-top: 12px;
+  }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 25, 23, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+  }
+  .modal-message {
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .modal-actions { display: flex; gap: 10px; }
+
+  .menu-popup {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    padding: 4px;
+    min-width: 160px;
+    z-index: 60;
+    animation: menuIn 0.15s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  @keyframes menuIn {
+    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    transition: background 0.1s;
+  }
+  .menu-item:hover { background: var(--surface-2); }
+  .menu-item.danger { color: var(--nok); }
+  .menu-item.danger:hover { background: var(--nok-soft); }
+  .menu-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .loading-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    color: var(--muted);
+    min-height: 60vh;
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2.5px solid var(--surface-2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .signin-view {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 24px;
+  }
+  .signin-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 40px 32px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: var(--shadow-md);
+  }
+  .signin-subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 8px 0 28px;
+  }
+  .signin-google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 18px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .signin-google-btn:hover { background: var(--surface-2); }
+  .home-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .home-user-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .home-user-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .home-user-signout {
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .home-user-signout:hover { background: var(--surface-2); }
+
+  .saving-pill {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: slideUpPill 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+  @keyframes slideUpPill {
+    from { opacity: 0; transform: translate(-50%, 12px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .saving-pill .spinner {
+    width: 14px; height: 14px;
+    border-width: 2px;
+    border-color: rgba(255,255,255,0.25);
+    border-top-color: white;
+  }
+
+  /* Categories */
+  .category-section { margin-bottom: 28px; }
+  .category-section:last-of-type { margin-bottom: 0; }
+
+  .category-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 14px;
+    padding: 0 4px;
+  }
+  .category-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 18px;
+    letter-spacing: -0.005em;
+    line-height: 1.25;
+    color: var(--ink);
+    flex: 1;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .category-count {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* Drag-and-drop visuals */
+  .set-tile {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .set-tile.is-ghost {
+    opacity: 0.28;
+    filter: saturate(0.5);
+    transition: opacity 0.15s;
+  }
+  .set-tile.is-ghost > * { pointer-events: none; }
+
+  body.dragging { touch-action: none; cursor: grabbing; overflow: hidden; }
+  body.dragging .set-tile:not(.is-ghost):not(.set-tile-add) {
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .drag-clone {
+    pointer-events: none;
+    transition: none;
+    box-shadow: 0 28px 56px rgba(28, 25, 23, 0.28), 0 10px 18px rgba(28, 25, 23, 0.14);
+    transform-origin: center;
+    will-change: transform;
+  }
+  .drag-clone .set-tile-menu { display: none; }
+
+  .drag-hint {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 480px) {
+    #app { padding: 0 16px 32px; }
+    .sets-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .set-tile { padding: 14px; }
+    .set-tile-name { font-size: 17px; }
+    .home-header { padding: 16px 0 24px; }
+    .form-card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // ============================================================
+  // Firebase — paste your project config here
+  // (Create project at https://console.firebase.google.com)
+  // ============================================================
+  const FIREBASE_CONFIG = {
+    apiKey:            "REPLACE_apiKey",
+    authDomain:        "REPLACE_authDomain",
+    projectId:         "REPLACE_projectId",
+    storageBucket:     "REPLACE_storageBucket",
+    messagingSenderId: "REPLACE_messagingSenderId",
+    appId:             "REPLACE_appId",
+  };
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth  = firebase.auth();
+  const fsdb  = firebase.firestore();
+  const stor  = firebase.storage();
+  let currentUser = null;
+
+  // ============================================================
+  // Categories
+  // ============================================================
+  const CATEGORIES = [
+    { id: 'theoretical', name: 'Theoretical foundations of computer science and mathematics' },
+    { id: 'software', name: 'Software, computing and information systems' },
+  ];
+  const DEFAULT_CATEGORY = 'theoretical';
+
+  function getSetsByCategory(catId) {
+    return state.sets
+      .filter(s => s.category === catId)
+      .sort((a, b) => {
+        const ap = (a.position == null) ? 0 : a.position;
+        const bp = (b.position == null) ? 0 : b.position;
+        if (ap !== bp) return ap - bp;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      });
+  }
+
+  function backfillSetCategoriesAndPositions() {
+    // Ensure every set has a valid category
+    for (const s of state.sets) {
+      if (!s.category || !CATEGORIES.find(c => c.id === s.category)) {
+        s.category = DEFAULT_CATEGORY;
+      }
+    }
+    // Ensure every set has a position; assign to those missing it (newest at end)
+    for (const cat of CATEGORIES) {
+      const positioned = state.sets
+        .filter(s => s.category === cat.id && s.position != null)
+        .sort((a, b) => a.position - b.position);
+      let nextPos = positioned.length > 0
+        ? Math.max(...positioned.map(s => s.position)) + 1
+        : 0;
+      const unpositioned = state.sets
+        .filter(s => s.category === cat.id && s.position == null)
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      for (const s of unpositioned) {
+        s.position = nextPos++;
+      }
+    }
+  }
+
+  // ============================================================
+  // Firestore layer
+  // ============================================================
+  function setsRef()  { return fsdb.collection('users').doc(currentUser.uid).collection('sets'); }
+  function cardsRef() { return fsdb.collection('users').doc(currentUser.uid).collection('cards'); }
+
+  async function dbGetAllSets() {
+    const snap = await setsRef().get();
+    return snap.docs.map(d => d.data()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }
+  async function dbGetCardsForSet(setId) {
+    const snap = await cardsRef().where('setId', '==', setId).get();
+    return snap.docs.map(d => d.data()).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  }
+  async function dbCreateSet(set) {
+    await setsRef().doc(set.id).set(set);
+  }
+  async function dbUpdateSet(set) {
+    await setsRef().doc(set.id).set(set);
+  }
+  async function dbDeleteSetWithCards(setId) {
+    const cardsSnap = await cardsRef().where('setId', '==', setId).get();
+    const batch = fsdb.batch();
+    for (const d of cardsSnap.docs) {
+      const card = d.data();
+      if (card.imageUrl) {
+        try { await stor.ref('users/' + currentUser.uid + '/images/' + card.id).delete(); } catch {}
+      }
+      batch.delete(d.ref);
+    }
+    batch.delete(setsRef().doc(setId));
+    await batch.commit();
+  }
+  async function dbAddCard(card) {
+    const batch = fsdb.batch();
+    batch.set(cardsRef().doc(card.id), card);
+    batch.update(setsRef().doc(card.setId), { cardCount: firebase.firestore.FieldValue.increment(1) });
+    await batch.commit();
+  }
+  async function dbDeleteCard(cardId, setId) {
+    try { await stor.ref('users/' + currentUser.uid + '/images/' + cardId).delete(); } catch {}
+    const batch = fsdb.batch();
+    batch.delete(cardsRef().doc(cardId));
+    batch.update(setsRef().doc(setId), { cardCount: firebase.firestore.FieldValue.increment(-1) });
+    await batch.commit();
+  }
+
+  // ============================================================
+  // IndexedDB layer — kept read-only for local data migration
+  // ============================================================
+  const IDB_NAME = 'flashcards_db';
+  let idb = null;
+
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onsuccess = () => { idb = req.result; resolve(idb); };
+      req.onerror = () => reject(req.error);
+      req.onupgradeneeded = () => resolve(null); // empty db, nothing to migrate
+    });
+  }
+  function idbReqPromise(req) {
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror  = () => reject(req.error);
+    });
+  }
+  async function idbGetAllSets() {
+    if (!idb) return [];
+    const tx = idb.transaction('sets', 'readonly');
+    return idbReqPromise(tx.objectStore('sets').getAll());
+  }
+  async function idbGetCardsForSet(setId) {
+    if (!idb) return [];
+    const tx = idb.transaction('cards', 'readonly');
+    const idx = tx.objectStore('cards').index('setId');
+    return idbReqPromise(idx.getAll(setId));
+  }
+
+  // ============================================================
+  // Migration: import data from local IndexedDB into Firebase
+  // ============================================================
+  async function importLocalDataToFirebase() {
+    state.migrating = true;
+    render();
+    try {
+      await idbOpen();
+      const localSets = await idbGetAllSets();
+      if (localSets.length === 0) {
+        openModal({ type: 'alert', title: 'Nothing to import', message: 'No local data found on this device.' });
+        return;
+      }
+      let importedSets = 0, importedCards = 0;
+      for (const s of localSets) {
+        const setDoc = {
+          id: s.id, name: s.name,
+          createdAt: s.createdAt || Date.now(),
+          cardCount: 0,
+          category: s.category || DEFAULT_CATEGORY,
+          position: s.position != null ? s.position : 0,
+        };
+        await dbCreateSet(setDoc);
+        const cards = await idbGetCardsForSet(s.id);
+        for (const c of cards) {
+          if (!c.image) continue;
+          const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + c.id);
+          await imgRef.put(c.image);
+          const imageUrl = await imgRef.getDownloadURL();
+          await dbAddCard({
+            id: c.id, setId: c.setId,
+            label: c.label || '',
+            imageUrl,
+            imageWidth: c.imageWidth || null,
+            imageHeight: c.imageHeight || null,
+            createdAt: c.createdAt || Date.now(),
+          });
+          importedCards++;
+        }
+        importedSets++;
+      }
+      state.sets = await dbGetAllSets();
+      openModal({ type: 'alert', title: 'Import complete', message: 'Imported ' + importedSets + ' set(s) and ' + importedCards + ' card(s).' });
+    } catch (e) {
+      console.error('Import failed:', e);
+      openModal({ type: 'alert', title: 'Import failed', message: e && e.message ? e.message : String(e) });
+    } finally {
+      state.migrating = false;
+      render();
+    }
+  }
+
+  // kept only for the idb-to-firebase migration path above
+  function dataURLtoBlob_unused(dataURL) {
+    const [meta, b64] = dataURL.split(',');
+    const mime = (meta.match(/:(.*?);/) || [, 'application/octet-stream'])[1];
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  // ---- dead code below kept so the file still parses (was reachable in old flow) ----
+  async function migrateFromLocalStorage() {
+    const raw = localStorage.getItem('flashcards_v1');
+    if (!raw) return;
+    try {
+      const existing = await dbGetAllSets();
+      if (existing.length > 0) return;
+      const data = JSON.parse(raw);
+      if (!data.sets || data.sets.length === 0) return;
+
+      for (const oldSet of data.sets) {
+        const newSet = {
+          id: oldSet.id,
+          name: oldSet.name,
+          createdAt: oldSet.createdAt || Date.now(),
+          cardCount: 0,
+          category: DEFAULT_CATEGORY,
+        };
+        await dbCreateSet(newSet);
+        for (const oldCard of (oldSet.cards || [])) {
+          if (!oldCard.image || !oldCard.image.startsWith('data:')) continue;
+          const blob = dataURLtoBlob(oldCard.image);
+          const newCard = {
+            id: oldCard.id,
+            setId: oldSet.id,
+            label: oldCard.label,
+            image: blob,
+            createdAt: Date.now(),
+          };
+          await dbAddCard(newCard);
+        }
+      }
+      localStorage.setItem('flashcards_v1_migrated', '1');
+    } catch (e) {
+      console.warn('Migration failed:', e);
+    }
+  }
+
+  function dataURLtoBlob(dataURL) {
+    const [meta, b64] = dataURL.split(',');
+    const mime = (meta.match(/:(.*?);/) || [, 'application/octet-stream'])[1];
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+
+  // ============================================================
+  // Image URL helpers (images now live in Firebase Storage)
+  // ============================================================
+  function getCardImageUrl(card) {
+    return (card && card.imageUrl) ? card.imageUrl : '';
+  }
+  function revokeCardUrl(_cardId) {}
+  function revokeAllUrls() {}
+
+  // ============================================================
+  // Storage estimate
+  // ============================================================
+  async function refreshStorageInfo() { /* storage is now cloud-based */ }
+
+  // ============================================================
+  // State
+  // ============================================================
+  let state = {
+    booted: false,
+    sets: [],
+    view: 'home',
+    currentSetId: null,
+    currentSetCards: [],
+    addingCard: false,
+    newCard: { label: '', image: null, previewUrl: null },
+    saving: false,
+    study: null,
+    modal: null,
+    menu: null,
+    storage: null,
+    draggedSetId: null,
+    user: null,
+    migrating: false,
+    shuffleEnabled: (function () {
+      try {
+        const v = localStorage.getItem('flashcards_shuffle');
+        return v === null ? true : v === '1';
+      } catch (e) { return true; }
+    })(),
+  };
+
+  function setShuffleEnabled(v) {
+    state.shuffleEnabled = !!v;
+    try { localStorage.setItem('flashcards_shuffle', v ? '1' : '0'); } catch (e) {}
+    render();
+  }
+
+  function signInWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(e => {
+      openModal({ type: 'alert', title: 'Sign-in failed', message: e.message || String(e) });
+    });
+  }
+  function signOut() {
+    openModal({
+      type: 'confirm',
+      title: 'Sign out?',
+      message: 'Your cards are saved in the cloud.',
+      confirmLabel: 'Sign out',
+      onConfirm: () => { closeModal(); auth.signOut(); },
+    });
+  }
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[c]);
+  }
+
+  // ============================================================
+  // DOM helpers
+  // ============================================================
+  function el(tag, props, ...children) {
+    const e = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        const v = props[k];
+        if (v == null || v === false) continue;
+        if (k === 'className') e.className = v;
+        else if (k === 'html') e.innerHTML = v;
+        else if (k.startsWith('on') && typeof v === 'function') {
+          e.addEventListener(k.slice(2).toLowerCase(), v);
+        } else e.setAttribute(k, v);
+      }
+    }
+    for (const c of children.flat()) {
+      if (c == null || c === false) continue;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return e;
+  }
+
+  const Icons = {
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+    more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    checkBig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+    tap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74"/><path d="M14 13.5V8.5a2.5 2.5 0 0 1 5 0v6.5a8 8 0 0 1-8 8h-2c-2.7 0-3.55-1.31-5.07-3.64L1.5 14l3-1 4.5 4.5"/></svg>',
+    clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+  };
+
+  function iconBtn(iconKey, props) {
+    const b = el('button', { className: 'icon-btn', type: 'button', ...(props || {}) });
+    b.innerHTML = Icons[iconKey];
+    return b;
+  }
+
+  // ============================================================
+  // Operations
+  // ============================================================
+  function getSet(id) { return state.sets.find(s => s.id === id); }
+
+  async function createSet(name, category) {
+    const cat = CATEGORIES.find(c => c.id === category) ? category : DEFAULT_CATEGORY;
+    const sameCatSets = state.sets.filter(s => s.category === cat);
+    const maxPos = sameCatSets.length > 0
+      ? Math.max(...sameCatSets.map(s => s.position == null ? 0 : s.position))
+      : -1;
+    const set = {
+      id: uid(),
+      name: name.trim(),
+      cardCount: 0,
+      createdAt: Date.now(),
+      category: cat,
+      position: maxPos + 1,
+    };
+    await dbCreateSet(set);
+    state.sets.push(set);
+    return set;
+  }
+  async function deleteSet(id) {
+    await dbDeleteSetWithCards(id);
+    state.sets = state.sets.filter(s => s.id !== id);
+    if (state.currentSetId === id) {
+      revokeAllUrls();
+      state.currentSetCards = [];
+      state.currentSetId = null;
+    }
+  }
+  async function renameSet(id, newName) {
+    const s = getSet(id);
+    if (!s || !newName.trim()) return;
+    s.name = newName.trim();
+    await dbUpdateSet(s);
+  }
+  async function addCard(setId, label, imageBlob, imageWidth, imageHeight) {
+    const cardId = uid();
+    const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + cardId);
+    await imgRef.put(imageBlob);
+    const imageUrl = await imgRef.getDownloadURL();
+    const card = {
+      id: cardId,
+      setId,
+      label: label.trim(),
+      imageUrl,
+      imageWidth: imageWidth || null,
+      imageHeight: imageHeight || null,
+      createdAt: Date.now(),
+    };
+    await dbAddCard(card);
+    if (state.currentSetId === setId) state.currentSetCards.push(card);
+    const s = getSet(setId);
+    if (s) s.cardCount = (s.cardCount || 0) + 1;
+  }
+  async function removeCard(setId, cardId) {
+    await dbDeleteCard(cardId, setId);
+    revokeCardUrl(cardId);
+    if (state.currentSetId === setId) {
+      state.currentSetCards = state.currentSetCards.filter(c => c.id !== cardId);
+    }
+    const s = getSet(setId);
+    if (s) s.cardCount = Math.max(0, (s.cardCount || 1) - 1);
+  }
+
+  // ============================================================
+  // Image validation (no compression — original Blob is stored as-is)
+  // Returns { blob, width, height } so we can size flashcards correctly.
+  // ============================================================
+  function validateImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith('image/')) {
+        reject(new Error('Please select an image file.'));
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const width = img.naturalWidth || 0;
+        const height = img.naturalHeight || 0;
+        URL.revokeObjectURL(url);
+        resolve({ blob: file, width, height });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this image.')); };
+      img.src = url;
+    });
+  }
+
+  function readBlobDimensions(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const dim = { width: img.naturalWidth || 0, height: img.naturalHeight || 0 };
+        URL.revokeObjectURL(url);
+        resolve(dim);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+      img.src = url;
+    });
+  }
+
+  async function ensureCardDimensions(cards) {
+    const missing = cards.filter(c => (!c.imageWidth || !c.imageHeight) && c.imageUrl);
+    if (missing.length === 0) return;
+
+    await Promise.all(missing.map(async (c) => {
+      try {
+        const dims = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve({ width: img.naturalWidth || 4, height: img.naturalHeight || 3 });
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = c.imageUrl;
+        });
+        c.imageWidth = dims.width;
+        c.imageHeight = dims.height;
+      } catch {
+        c.imageWidth = 4;
+        c.imageHeight = 3;
+      }
+    }));
+
+    try {
+      const batch = fsdb.batch();
+      for (const c of missing) {
+        batch.update(cardsRef().doc(c.id), { imageWidth: c.imageWidth, imageHeight: c.imageHeight });
+      }
+      await batch.commit();
+    } catch (e) {
+      console.warn('Could not persist computed dimensions:', e);
+    }
+  }
+
+  // ============================================================
+  // Drag-and-drop reorder for set tiles (pointer events)
+  // ============================================================
+  const drag = {
+    setId: null,
+    startX: 0, startY: 0,
+    lastX: 0, lastY: 0,
+    offsetX: 0, offsetY: 0,
+    longPressTimer: null,
+    cloneEl: null,
+    active: false,
+    rafScheduled: false,
+  };
+
+  async function persistAllSetPositions() {
+    if (!currentUser) return;
+    const batch = fsdb.batch();
+    for (const s of state.sets) batch.set(setsRef().doc(s.id), s);
+    await batch.commit();
+  }
+
+  function onTilePointerDown(setId, ev) {
+    if (ev.button !== undefined && ev.button !== 0) return;
+    if (drag.setId) return;
+    if (state.modal || state.menu) return;
+    if (ev.target && ev.target.closest && ev.target.closest('.set-tile-menu')) return;
+
+    drag.setId = setId;
+    drag.startX = ev.clientX;
+    drag.startY = ev.clientY;
+    drag.lastX = ev.clientX;
+    drag.lastY = ev.clientY;
+    drag.active = false;
+    drag.longPressTimer = setTimeout(activateDrag, 280);
+
+    document.addEventListener('pointermove', onDocPointerMove, { passive: false });
+    document.addEventListener('pointerup', onDocPointerUp);
+    document.addEventListener('pointercancel', onDocPointerUp);
+  }
+
+  function onDocPointerMove(ev) {
+    if (!drag.setId) return;
+    drag.lastX = ev.clientX;
+    drag.lastY = ev.clientY;
+
+    if (!drag.active) {
+      const dx = ev.clientX - drag.startX;
+      const dy = ev.clientY - drag.startY;
+      if (Math.hypot(dx, dy) > 10) cancelDragInit();
+      return;
+    }
+
+    ev.preventDefault();
+    scheduleDragUpdate();
+  }
+
+  function activateDrag() {
+    if (!drag.setId) return;
+    const tileEl = document.querySelector('[data-set-id="' + drag.setId + '"]');
+    if (!tileEl) { cancelDragInit(); return; }
+
+    const rect = tileEl.getBoundingClientRect();
+    drag.offsetX = drag.startX - rect.left;
+    drag.offsetY = drag.startY - rect.top;
+
+    const clone = tileEl.cloneNode(true);
+    clone.classList.add('drag-clone');
+    clone.classList.remove('is-ghost');
+    Object.assign(clone.style, {
+      position: 'fixed',
+      left: '0', top: '0',
+      width: rect.width + 'px',
+      height: rect.height + 'px',
+      margin: '0',
+      zIndex: '500',
+      transform: 'translate(' + rect.left + 'px, ' + rect.top + 'px) scale(1.04) rotate(-1.5deg)',
+    });
+    const cloneMenu = clone.querySelector('.set-tile-menu');
+    if (cloneMenu) cloneMenu.remove();
+    document.body.appendChild(clone);
+    drag.cloneEl = clone;
+
+    drag.active = true;
+    state.draggedSetId = drag.setId;
+    document.body.classList.add('dragging');
+
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+
+    render();
+    scheduleDragUpdate();
+  }
+
+  function scheduleDragUpdate() {
+    if (drag.rafScheduled) return;
+    drag.rafScheduled = true;
+    requestAnimationFrame(() => {
+      drag.rafScheduled = false;
+      if (!drag.active) return;
+      updateDragVisual();
+    });
+  }
+
+  function updateDragVisual() {
+    if (drag.cloneEl) {
+      const x = drag.lastX - drag.offsetX;
+      const y = drag.lastY - drag.offsetY;
+      drag.cloneEl.style.transform =
+        'translate(' + x + 'px, ' + y + 'px) scale(1.04) rotate(-1.5deg)';
+    }
+    const target = computeDropTarget(drag.lastX, drag.lastY);
+    if (target) moveDraggedSetTo(target.category, target.index);
+  }
+
+  function computeDropTarget(x, y) {
+    for (const cat of CATEGORIES) {
+      const gridEl = document.querySelector('[data-cat-grid="' + cat.id + '"]');
+      if (!gridEl) continue;
+      const r = gridEl.getBoundingClientRect();
+      // Expand the hit zone vertically a touch so edges feel right
+      if (x >= r.left && x <= r.right && y >= r.top - 12 && y <= r.bottom + 12) {
+        return { category: cat.id, index: computeIndexInGrid(gridEl, x, y) };
+      }
+    }
+    return null;
+  }
+
+  function computeIndexInGrid(gridEl, x, y) {
+    const tiles = Array.from(gridEl.querySelectorAll('[data-set-id]'))
+      .filter(t => t.dataset.setId !== drag.setId);
+
+    let insertIdx = tiles.length;
+    for (let i = 0; i < tiles.length; i++) {
+      const r = tiles[i].getBoundingClientRect();
+      const sameRow = y >= r.top && y <= r.bottom;
+      const cx = (r.left + r.right) / 2;
+      if (sameRow) {
+        if (x < cx) { insertIdx = i; break; }
+        else insertIdx = i + 1;
+      } else if (y < r.top) {
+        insertIdx = i;
+        break;
+      }
+      // y > r.bottom: tile is above the cursor; keep going
+    }
+    return insertIdx;
+  }
+
+  function moveDraggedSetTo(newCategory, newIndex) {
+    const set = state.sets.find(s => s.id === drag.setId);
+    if (!set) return;
+
+    const groups = {};
+    for (const cat of CATEGORIES) {
+      groups[cat.id] = state.sets
+        .filter(s => s.category === cat.id && s.id !== set.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+    }
+    const targetGroup = groups[newCategory] || groups[DEFAULT_CATEGORY];
+    const idx = Math.max(0, Math.min(newIndex, targetGroup.length));
+
+    // Skip if the set is already at this exact slot
+    if (set.category === newCategory) {
+      const currentIdx = state.sets
+        .filter(s => s.category === newCategory)
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .indexOf(set);
+      if (currentIdx === idx) return;
+    }
+
+    set.category = newCategory;
+    targetGroup.splice(idx, 0, set);
+
+    for (const cat of CATEGORIES) {
+      const list = (cat.id === newCategory) ? targetGroup : groups[cat.id];
+      list.forEach((s, i) => { s.position = i; });
+    }
+    render();
+  }
+
+  function cancelDragInit() {
+    if (drag.longPressTimer) clearTimeout(drag.longPressTimer);
+    drag.longPressTimer = null;
+    document.removeEventListener('pointermove', onDocPointerMove);
+    document.removeEventListener('pointerup', onDocPointerUp);
+    document.removeEventListener('pointercancel', onDocPointerUp);
+    drag.setId = null;
+    drag.active = false;
+  }
+
+  async function onDocPointerUp() {
+    if (!drag.setId) return;
+    if (drag.longPressTimer) clearTimeout(drag.longPressTimer);
+    drag.longPressTimer = null;
+    document.removeEventListener('pointermove', onDocPointerMove);
+    document.removeEventListener('pointerup', onDocPointerUp);
+    document.removeEventListener('pointercancel', onDocPointerUp);
+
+    if (drag.active) {
+      if (drag.cloneEl) drag.cloneEl.remove();
+      drag.cloneEl = null;
+      drag.active = false;
+      state.draggedSetId = null;
+      drag.setId = null;
+      document.body.classList.remove('dragging');
+
+      // Suppress the click that would otherwise fire on release
+      const block = (e) => { e.stopPropagation(); e.preventDefault(); };
+      window.addEventListener('click', block, { capture: true, once: true });
+      setTimeout(() => {
+        try { window.removeEventListener('click', block, true); } catch (e) {}
+      }, 250);
+
+      render();
+      try { await persistAllSetPositions(); }
+      catch (err) { console.error('Position persist failed:', err); }
+    } else {
+      drag.setId = null;
+    }
+  }
+
+  // ============================================================
+  // Navigation
+  // ============================================================
+  async function goHome() {
+    state.view = 'home';
+    state.currentSetId = null;
+    state.addingCard = false;
+    state.study = null;
+    clearNewCard();
+    revokeAllUrls();
+    state.currentSetCards = [];
+    await refreshStorageInfo();
+    render();
+  }
+
+  async function openSet(id) {
+    state.view = 'set';
+    state.currentSetId = id;
+    state.addingCard = false;
+    state.study = null;
+    revokeAllUrls();
+    render();
+    state.currentSetCards = await dbGetCardsForSet(id);
+    render();
+  }
+
+  async function startStudy(setId) {
+    const set = getSet(setId);
+    if (!set || (set.cardCount || 0) === 0) return;
+    if (!state.currentSetCards || state.currentSetCards.length === 0) return;
+
+    // Make sure every card knows its image dimensions so we can size the flashcard correctly
+    try { await ensureCardDimensions(state.currentSetCards); }
+    catch (e) { console.warn('Dimension backfill failed:', e); }
+
+    state.view = 'study';
+    state.study = {
+      setId,
+      deck: state.shuffleEnabled ? shuffle(state.currentSetCards) : state.currentSetCards.slice(),
+      index: 0,
+      flipped: false,
+      nokCards: [],
+      round: 1,
+      totalThisRound: state.currentSetCards.length,
+      okCount: 0,
+      nokCount: 0,
+      completed: false,
+    };
+    render();
+  }
+
+  function backFromStudy() {
+    const s = state.study;
+    if (s && !s.completed && (s.index > 0 || s.flipped)) {
+      openModal({
+        type: 'confirm',
+        title: 'Leave study session?',
+        message: 'Your progress for this round will be lost.',
+        confirmLabel: 'Leave',
+        danger: true,
+        onConfirm: () => {
+          closeModal();
+          state.view = 'set';
+          state.study = null;
+          render();
+        },
+      });
+    } else {
+      state.view = 'set';
+      state.study = null;
+      render();
+    }
+  }
+
+  function flipCard() {
+    if (!state.study || state.study.completed || state.study.flipped) return;
+    state.study.flipped = true;
+    render();
+  }
+
+  function markCard(isOk) {
+    const s = state.study;
+    if (!s || !s.flipped) return;
+    const current = s.deck[s.index];
+    if (isOk) s.okCount++;
+    else { s.nokCards.push(current); s.nokCount++; }
+    s.index++;
+    s.flipped = false;
+
+    if (s.index >= s.deck.length) {
+      if (s.nokCards.length === 0) {
+        s.completed = true;
+      } else {
+        s.deck = state.shuffleEnabled ? shuffle(s.nokCards) : s.nokCards.slice();
+        s.nokCards = [];
+        s.index = 0;
+        s.round++;
+        s.totalThisRound = s.deck.length;
+      }
+    }
+    render();
+  }
+
+  // ============================================================
+  // Modal / Menu
+  // ============================================================
+  function openModal(m) { state.modal = m; render(); }
+  function closeModal() { state.modal = null; render(); }
+  function openMenu(m) { state.menu = m; render(); }
+  function closeMenu() { state.menu = null; render(); }
+
+  function promptCreateSet(category) {
+    const cat = CATEGORIES.find(c => c.id === category);
+    openModal({
+      type: 'prompt',
+      title: 'New set',
+      message: cat ? 'In: ' + cat.name : 'Give your set a name.',
+      placeholder: 'e.g. European Capitals',
+      confirmLabel: 'Create',
+      onConfirm: async (value) => {
+        const name = (value || '').trim();
+        if (!name) return;
+        const newSet = await createSet(name, cat ? cat.id : DEFAULT_CATEGORY);
+        closeModal();
+        await openSet(newSet.id);
+      },
+    });
+  }
+
+  function promptRenameSet(id) {
+    const s = getSet(id);
+    if (!s) return;
+    openModal({
+      type: 'prompt',
+      title: 'Rename set',
+      initialValue: s.name,
+      confirmLabel: 'Save',
+      onConfirm: async (value) => {
+        await renameSet(id, value);
+        closeModal();
+      },
+    });
+  }
+
+  function confirmDeleteSet(id) {
+    const s = getSet(id);
+    if (!s) return;
+    const c = s.cardCount || 0;
+    openModal({
+      type: 'confirm',
+      title: 'Delete set?',
+      message: '"' + s.name + '" and its ' + c + ' ' + (c === 1 ? 'card' : 'cards') + ' will be permanently deleted.',
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        await deleteSet(id);
+        closeModal();
+        await refreshStorageInfo();
+        render();
+      },
+    });
+  }
+
+  function clearNewCard() {
+    if (state.newCard.previewUrl) URL.revokeObjectURL(state.newCard.previewUrl);
+    state.newCard = { label: '', image: null, previewUrl: null, imageWidth: null, imageHeight: null };
+  }
+
+  function startAddCard() {
+    state.addingCard = true;
+    clearNewCard();
+    render();
+  }
+  function cancelAddCard() {
+    state.addingCard = false;
+    clearNewCard();
+    render();
+  }
+
+  async function saveNewCard() {
+    const { label, image, imageWidth, imageHeight } = state.newCard;
+    if (!label.trim() || !image) return;
+    state.saving = true;
+    render();
+    try {
+      await addCard(state.currentSetId, label, image, imageWidth, imageHeight);
+      state.addingCard = false;
+      clearNewCard();
+      await refreshStorageInfo();
+    } catch (err) {
+      console.error('Save failed:', err);
+      openModal({
+        type: 'alert',
+        title: 'Could not save card',
+        message: err && err.message ? err.message : 'An error occurred while saving. Your storage may be full.',
+      });
+    } finally {
+      state.saving = false;
+      render();
+    }
+  }
+
+  // ============================================================
+  // Renderers
+  // ============================================================
+  function renderHome() {
+    const root = el('div', { className: 'home-view' });
+    const header = el('div', { className: 'home-header' });
+    const totalSets = state.sets.length;
+
+    let subtitle;
+    if (totalSets === 0) subtitle = 'Create your first set to begin';
+    else subtitle = totalSets + ' ' + (totalSets === 1 ? 'set' : 'sets') + ' &middot; <span class="drag-hint">Hold &amp; drag to reorder</span>';
+
+    header.innerHTML =
+      '<h1 class="home-title">Flash<em>cards</em></h1>' +
+      '<p class="home-subtitle">' + subtitle + '</p>';
+
+    if (state.user) {
+      const userBar = el('div', { className: 'home-user' });
+      if (state.user.photoURL) {
+        const avatar = el('img', { className: 'home-user-avatar', src: state.user.photoURL, alt: '' });
+        userBar.appendChild(avatar);
+      }
+      userBar.appendChild(el('span', { className: 'home-user-name' }, state.user.displayName || state.user.email || ''));
+      const soBtn = el('button', { className: 'home-user-signout', type: 'button', onclick: signOut }, 'Sign out');
+      userBar.appendChild(soBtn);
+      header.appendChild(userBar);
+    }
+
+    root.appendChild(header);
+
+    for (const cat of CATEGORIES) {
+      root.appendChild(renderCategorySection(cat));
+    }
+
+    if (totalSets === 0) {
+      const importBtn = el('button', {
+        className: 'btn btn-ghost',
+        type: 'button',
+        style: 'margin: 8px auto; display: block; font-size: 13px; color: var(--muted);',
+        onclick: () => openModal({
+          type: 'confirm',
+          title: 'Import from this device?',
+          message: 'This will upload any cards you previously created on this device into your account.',
+          confirmLabel: 'Import',
+          onConfirm: () => { closeModal(); importLocalDataToFirebase(); },
+        }),
+      }, 'Import local data from this device');
+      root.appendChild(importBtn);
+    }
+
+    return root;
+  }
+
+  function renderCategorySection(cat) {
+    const sets = getSetsByCategory(cat.id);
+    const section = el('section', { className: 'category-section' });
+
+    const headerRow = el('div', { className: 'category-header' });
+    headerRow.innerHTML =
+      '<h2 class="category-title">' + escapeHtml(cat.name) + '</h2>' +
+      '<span class="category-count">' + sets.length + ' ' + (sets.length === 1 ? 'set' : 'sets') + '</span>';
+    section.appendChild(headerRow);
+
+    const grid = el('div', { className: 'sets-grid' });
+    grid.setAttribute('data-cat-grid', cat.id);
+
+    const addTile = el('button', {
+      className: 'set-tile set-tile-add',
+      type: 'button',
+      onclick: () => promptCreateSet(cat.id),
+    });
+    addTile.innerHTML = Icons.plus + '<span>New set</span>';
+    grid.appendChild(addTile);
+
+    for (const set of sets) {
+      grid.appendChild(renderSetTile(set));
+    }
+    section.appendChild(grid);
+    return section;
+  }
+
+  function renderSetTile(set) {
+    const c = set.cardCount || 0;
+    const isGhost = state.draggedSetId === set.id;
+    const tile = el('button', {
+      className: 'set-tile' + (isGhost ? ' is-ghost' : ''),
+      type: 'button',
+      onclick: () => { if (!isGhost) openSet(set.id); },
+      onpointerdown: (ev) => onTilePointerDown(set.id, ev),
+    });
+    tile.setAttribute('data-set-id', set.id);
+    tile.innerHTML =
+      '<div class="set-tile-name">' + escapeHtml(set.name) + '</div>' +
+      '<div class="set-tile-meta"><span>' + c + ' ' + (c === 1 ? 'card' : 'cards') + '</span></div>';
+
+    const menuBtn = el('button', {
+      className: 'set-tile-menu',
+      type: 'button',
+      'aria-label': 'Set options',
+      onpointerdown: (e) => e.stopPropagation(),
+      onclick: (ev) => {
+        ev.stopPropagation();
+        const rect = ev.currentTarget.getBoundingClientRect();
+        openMenu({
+          x: rect.right - 160,
+          y: rect.bottom + 6,
+          items: [
+            { label: 'Rename', icon: 'edit', action: () => { closeMenu(); promptRenameSet(set.id); } },
+            { label: 'Delete', icon: 'trash', danger: true, action: () => { closeMenu(); confirmDeleteSet(set.id); } },
+          ],
+        });
+      },
+    });
+    menuBtn.innerHTML = Icons.more;
+    tile.appendChild(menuBtn);
+    return tile;
+  }
+
+  function renderSet() {
+    const set = getSet(state.currentSetId);
+    if (!set) { goHome(); return el('div'); }
+
+    const root = el('div');
+    const topbar = el('div', { className: 'topbar' });
+    topbar.appendChild(iconBtn('back', { 'aria-label': 'Back', onclick: goHome }));
+    topbar.appendChild(el('div', { className: 'topbar-title' }, 'All sets'));
+    root.appendChild(topbar);
+
+    const cards = state.currentSetCards;
+    const c = cards.length;
+
+    const header = el('div', { className: 'set-header' });
+    header.innerHTML =
+      '<h2 class="set-name">' + escapeHtml(set.name) + '</h2>' +
+      '<p class="set-meta">' + c + ' ' + (c === 1 ? 'card' : 'cards') + '</p>';
+    root.appendChild(header);
+
+    const actions = el('div', { className: 'set-actions' });
+    const studyBtn = el('button', {
+      className: 'btn btn-accent btn-large',
+      type: 'button',
+      onclick: () => startStudy(set.id),
+    });
+    studyBtn.innerHTML = Icons.play + '<span>Study</span>';
+    if (c === 0) studyBtn.setAttribute('disabled', '');
+
+    const addBtn = el('button', {
+      className: 'btn btn-ghost btn-large',
+      type: 'button',
+      onclick: () => startAddCard(),
+    });
+    addBtn.innerHTML = Icons.plus + '<span>Add card</span>';
+    actions.appendChild(studyBtn);
+    actions.appendChild(addBtn);
+    root.appendChild(actions);
+
+    const opts = el('div', { className: 'study-options' });
+    const cb = el('input', {
+      type: 'checkbox',
+      id: 'shuffle-toggle',
+      checked: state.shuffleEnabled,
+      onchange: (e) => setShuffleEnabled(e.target.checked),
+    });
+    const lbl = el('label', { for: 'shuffle-toggle' }, 'Shuffle cards when studying');
+    opts.appendChild(cb);
+    opts.appendChild(lbl);
+    root.appendChild(opts);
+
+    if (state.addingCard) root.appendChild(renderAddCardForm());
+
+    if (c === 0 && !state.addingCard) {
+      const empty = el('div', { className: 'empty-state' });
+      empty.innerHTML =
+        '<div class="empty-state-mark">+</div>' +
+        '<div class="empty-state-title">No cards yet</div>' +
+        '<div class="empty-state-subtitle">Add your first card to start studying.</div>';
+      root.appendChild(empty);
+    } else if (c > 0) {
+      root.appendChild(el('div', { className: 'cards-section-title' }, 'Cards'));
+      const list = el('div', { className: 'cards-list' });
+      for (const card of cards) list.appendChild(renderCardRow(set.id, card));
+      root.appendChild(list);
+    }
+
+    return root;
+  }
+
+  function renderCardRow(setId, card) {
+    const row = el('div', { className: 'card-row' });
+    const labelWrap = el('div', { className: 'card-row-label' });
+    labelWrap.textContent = card.label;
+    labelWrap.appendChild(el('div', { className: 'card-row-meta' }));
+
+    const del = el('button', {
+      className: 'card-row-delete',
+      type: 'button',
+      'aria-label': 'Delete card',
+      onclick: async () => {
+        await removeCard(setId, card.id);
+        await refreshStorageInfo();
+        render();
+      },
+    });
+    del.innerHTML = Icons.trash;
+    row.appendChild(labelWrap);
+    row.appendChild(del);
+    return row;
+  }
+
+  function renderAddCardForm() {
+    const root = el('div', { className: 'form-card' });
+    root.appendChild(el('div', { className: 'form-card-title' }, 'New card'));
+
+    const labelRow = el('div', { className: 'form-row' });
+    labelRow.appendChild(el('label', { className: 'form-label', for: 'cardLabel' }, 'Label (front)'));
+    const labelInput = el('input', {
+      className: 'input',
+      type: 'text',
+      id: 'cardLabel',
+      placeholder: 'e.g. Paris',
+      maxlength: '120',
+      value: state.newCard.label,
+    });
+    labelInput.addEventListener('input', (e) => {
+      state.newCard.label = e.target.value;
+      const sb = document.getElementById('saveCardBtn');
+      if (sb) sb.disabled = !(state.newCard.label.trim() && state.newCard.image) || state.saving;
+    });
+    labelRow.appendChild(labelInput);
+    root.appendChild(labelRow);
+
+    const imgRow = el('div', { className: 'form-row' });
+    imgRow.appendChild(el('label', { className: 'form-label' }, 'Image (back)'));
+
+    if (state.newCard.image && state.newCard.previewUrl) {
+      const preview = el('div', { className: 'file-preview' });
+      const previewImg = el('img', { src: state.newCard.previewUrl, alt: 'Preview' });
+      const sizeMeta = el('div', { className: 'file-preview-meta' });
+      const replaceBtn = el('button', {
+        className: 'file-preview-replace',
+        type: 'button',
+        onclick: () => triggerFilePicker(),
+      }, 'Replace');
+      preview.appendChild(previewImg);
+      preview.appendChild(sizeMeta);
+      preview.appendChild(replaceBtn);
+      imgRow.appendChild(preview);
+    } else {
+      const dropLabel = el('label', { className: 'file-drop' });
+      dropLabel.innerHTML =
+        Icons.upload +
+        '<div class="file-drop-text">Tap to upload image</div>' +
+        '<div class="file-drop-hint">Or paste a screenshot (Ctrl+V)</div>';
+      const fileInput = el('input', {
+        type: 'file', accept: 'image/*', id: 'cardImageInput',
+      });
+      fileInput.addEventListener('change', handleFileSelect);
+      dropLabel.appendChild(fileInput);
+      imgRow.appendChild(dropLabel);
+
+      // Paste-from-clipboard button (only shown when the API is available; secure context required)
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const pasteBtn = el('button', {
+          className: 'paste-btn',
+          type: 'button',
+          onclick: () => pasteFromClipboard(),
+        });
+        pasteBtn.innerHTML = Icons.clipboard + '<span>Paste from clipboard</span>';
+        imgRow.appendChild(pasteBtn);
+      }
+    }
+
+    const hiddenReplace = el('input', {
+      type: 'file', accept: 'image/*', id: 'cardImageReplace', style: 'display:none',
+    });
+    hiddenReplace.addEventListener('change', handleFileSelect);
+    imgRow.appendChild(hiddenReplace);
+    root.appendChild(imgRow);
+
+    const formActions = el('div', { className: 'form-actions' });
+    const cancelBtn = el('button', {
+      className: 'btn btn-ghost', type: 'button',
+      onclick: () => cancelAddCard(),
+      disabled: state.saving,
+    }, 'Cancel');
+    const saveBtn = el('button', {
+      className: 'btn btn-primary', type: 'button', id: 'saveCardBtn',
+      onclick: () => saveNewCard(),
+    }, state.saving ? 'Saving…' : 'Save card');
+    if (!(state.newCard.label.trim() && state.newCard.image) || state.saving) saveBtn.disabled = true;
+    formActions.appendChild(cancelBtn);
+    formActions.appendChild(saveBtn);
+    root.appendChild(formActions);
+    return root;
+  }
+
+  function triggerFilePicker() {
+    const a = document.getElementById('cardImageInput');
+    const b = document.getElementById('cardImageReplace');
+    (a || b).click();
+  }
+
+  async function ingestImageBlob(file) {
+    // Capture any label text the user has already typed
+    const labelEl = document.getElementById('cardLabel');
+    if (labelEl) state.newCard.label = labelEl.value;
+
+    const result = await validateImage(file);
+
+    if (state.newCard.previewUrl) URL.revokeObjectURL(state.newCard.previewUrl);
+    state.newCard.image = result.blob;
+    state.newCard.imageWidth = result.width;
+    state.newCard.imageHeight = result.height;
+    state.newCard.previewUrl = URL.createObjectURL(result.blob);
+    render();
+    setTimeout(() => {
+      const li = document.getElementById('cardLabel');
+      if (li && !li.value) li.focus();
+    }, 0);
+  }
+
+  async function handleFileSelect(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    try {
+      await ingestImageBlob(file);
+    } catch (err) {
+      openModal({
+        type: 'alert',
+        title: 'Could not load image',
+        message: err.message || 'Please try a different file.',
+      });
+    }
+  }
+
+  async function handlePasteEvent(ev) {
+    // Only act on a set view; on home or study, let paste behave normally
+    if (state.view !== 'set' || !state.currentSetId) return;
+    if (state.modal) return;
+    if (state.saving) return;
+
+    const items = ev.clipboardData && ev.clipboardData.items;
+    if (!items) return;
+
+    let imageFile = null;
+    for (const item of items) {
+      if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+        imageFile = item.getAsFile();
+        if (imageFile) break;
+      }
+    }
+    if (!imageFile) return; // nothing to do; let default paste happen (e.g. text into label input)
+
+    ev.preventDefault();
+
+    // Auto-open the form if it isn't already
+    if (!state.addingCard) {
+      state.addingCard = true;
+      clearNewCard();
+      render();
+    }
+
+    try {
+      await ingestImageBlob(imageFile);
+    } catch (err) {
+      openModal({
+        type: 'alert',
+        title: 'Could not paste image',
+        message: err.message || 'The clipboard image could not be loaded.',
+      });
+    }
+  }
+
+  async function pasteFromClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      openModal({
+        type: 'alert',
+        title: 'Paste not supported here',
+        message: 'Your browser cannot read directly from the clipboard. Press Ctrl+V (or Cmd+V) instead.',
+      });
+      return;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      let blob = null;
+      let mime = null;
+      for (const item of items) {
+        const imgType = item.types.find(t => t.startsWith('image/'));
+        if (imgType) {
+          blob = await item.getType(imgType);
+          mime = imgType;
+          break;
+        }
+      }
+      if (!blob) {
+        openModal({
+          type: 'alert',
+          title: 'Nothing to paste',
+          message: 'No image was found on the clipboard. Copy a screenshot or image first.',
+        });
+        return;
+      }
+      const ext = (mime.split('/')[1] || 'png').toLowerCase().split('+')[0];
+      const file = new File([blob], 'pasted-' + Date.now() + '.' + ext, { type: mime });
+      await ingestImageBlob(file);
+    } catch (err) {
+      if (err && err.name === 'NotAllowedError') {
+        openModal({
+          type: 'alert',
+          title: 'Permission needed',
+          message: 'Please allow clipboard access to paste images directly. You can also press Ctrl+V instead.',
+        });
+      } else if (err && (err.name === 'NotFoundError' || err.name === 'DataError')) {
+        openModal({
+          type: 'alert',
+          title: 'Nothing to paste',
+          message: 'The clipboard does not contain an image.',
+        });
+      } else {
+        console.error('Clipboard read failed:', err);
+        openModal({
+          type: 'alert',
+          title: 'Could not read clipboard',
+          message: (err && err.message) || 'Press Ctrl+V instead.',
+        });
+      }
+    }
+  }
+
+  function renderStudy() {
+    const s = state.study;
+    if (!s) { goHome(); return el('div'); }
+    const set = getSet(s.setId);
+    if (!set) { goHome(); return el('div'); }
+
+    const root = el('div', { className: 'study-view' });
+    const topbar = el('div', { className: 'topbar' });
+    topbar.appendChild(iconBtn('back', { 'aria-label': 'Back', onclick: backFromStudy }));
+    topbar.appendChild(el('div', { className: 'topbar-title' }, set.name));
+    root.appendChild(topbar);
+
+    if (s.completed) { root.appendChild(renderDone(s)); return root; }
+
+    const progress = el('div', { className: 'study-progress' });
+    let progressInner = '';
+    if (s.round > 1) progressInner += '<div class="study-round-tag">Round ' + s.round + ' · review</div>';
+    const cur = s.index + 1;
+    const total = s.totalThisRound;
+    progressInner += '<div class="study-progress-text">Card ' + cur + ' of ' + total + '</div>';
+    const pct = (s.index / total) * 100;
+    progressInner += '<div class="study-progress-bar"><div class="study-progress-fill" style="width:' + pct + '%"></div></div>';
+    progress.innerHTML = progressInner;
+    root.appendChild(progress);
+
+    const card = s.deck[s.index];
+    const aspectW = card.imageWidth || 4;
+    const aspectH = card.imageHeight || 3;
+
+    const area = el('div', { className: 'flashcard-area' });
+    const container = el('div', {
+      className: 'flashcard-container',
+      role: 'button',
+      'aria-label': 'Flip card',
+      tabindex: '0',
+      onclick: () => flipCard(),
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipCard(); } },
+    });
+    container.style.setProperty('--card-aspect', aspectW + ' / ' + aspectH);
+    const flashcard = el('div', { className: 'flashcard' + (s.flipped ? ' flipped' : '') });
+
+    const front = el('div', { className: 'flashcard-face flashcard-front' });
+    front.innerHTML =
+      '<div class="flashcard-front-hint">Topic</div>' +
+      '<div class="flashcard-front-label">' + escapeHtml(card.label) + '</div>' +
+      '<div class="flashcard-tap-icon">' + Icons.tap + '<span>Tap to flip</span></div>';
+    flashcard.appendChild(front);
+
+    const back = el('div', { className: 'flashcard-face flashcard-back' });
+    back.innerHTML =
+      '<img src="' + getCardImageUrl(card) + '" alt="' + escapeHtml(card.label) + '">';
+    flashcard.appendChild(back);
+    container.appendChild(flashcard);
+    area.appendChild(container);
+    root.appendChild(area);
+
+    const actions = el('div', { className: 'study-actions' + (s.flipped ? '' : ' hidden-soft') });
+    const nokBtn = el('button', {
+      className: 'study-btn study-btn-nok', type: 'button',
+      onclick: () => markCard(false), disabled: !s.flipped,
+    });
+    nokBtn.innerHTML = Icons.x + '<span>NOK</span>';
+    const okBtn = el('button', {
+      className: 'study-btn study-btn-ok', type: 'button',
+      onclick: () => markCard(true), disabled: !s.flipped,
+    });
+    okBtn.innerHTML = Icons.check + '<span>OK</span>';
+    actions.appendChild(nokBtn);
+    actions.appendChild(okBtn);
+    root.appendChild(actions);
+    return root;
+  }
+
+  function renderDone(s) {
+    const root = el('div', { className: 'done-screen' });
+    const mark = el('div', { className: 'done-mark' });
+    mark.innerHTML = Icons.checkBig;
+    root.appendChild(mark);
+
+    const title = el('h2', { className: 'done-title' });
+    title.innerHTML = 'All <em>done!</em>';
+    root.appendChild(title);
+
+    root.appendChild(el('p', { className: 'done-subtitle' },
+      s.round === 1
+        ? 'You aced every card on the first try. Beautiful work.'
+        : 'You reviewed everything until each card was solid. Nicely done.'
+    ));
+
+    const stats = el('div', { className: 'done-stats' });
+    const totalCards = (getSet(s.setId)?.cardCount) || 0;
+    stats.innerHTML =
+      '<div class="done-stat"><div class="done-stat-num">' + totalCards + '</div><div class="done-stat-label">Cards</div></div>' +
+      '<div class="done-stat"><div class="done-stat-num">' + s.round + '</div><div class="done-stat-label">' + (s.round === 1 ? 'Round' : 'Rounds') + '</div></div>';
+    root.appendChild(stats);
+
+    const actions = el('div', { className: 'done-actions' });
+    const againBtn = el('button', {
+      className: 'btn btn-ghost btn-large', type: 'button',
+      onclick: () => startStudy(s.setId),
+    }, 'Study again');
+    const doneBtn = el('button', {
+      className: 'btn btn-accent btn-large', type: 'button',
+      onclick: () => { state.view = 'set'; state.study = null; render(); },
+    }, 'Back to set');
+    actions.appendChild(againBtn);
+    actions.appendChild(doneBtn);
+    root.appendChild(actions);
+    return root;
+  }
+
+  function renderModal(m) {
+    const backdrop = el('div', {
+      className: 'modal-backdrop',
+      onclick: (e) => { if (e.target === e.currentTarget) closeModal(); },
+    });
+    const modal = el('div', { className: 'modal' });
+    if (m.title) modal.appendChild(el('div', { className: 'modal-title' }, m.title));
+    if (m.message) modal.appendChild(el('p', { className: 'modal-message' }, m.message));
+
+    let inputEl = null;
+    if (m.type === 'prompt') {
+      inputEl = el('input', {
+        className: 'input', type: 'text',
+        placeholder: m.placeholder || '',
+        value: m.initialValue || '',
+        maxlength: '80',
+      });
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); m.onConfirm && m.onConfirm(inputEl.value); }
+        else if (e.key === 'Escape') closeModal();
+      });
+      modal.appendChild(inputEl);
+      modal.appendChild(el('div', { style: 'height:16px' }));
+    }
+
+    const actions = el('div', { className: 'modal-actions' });
+    if (m.type === 'alert') {
+      const okBtn = el('button', {
+        className: 'btn btn-primary', type: 'button',
+        style: 'flex:1',
+        onclick: () => closeModal(),
+      }, m.confirmLabel || 'OK');
+      actions.appendChild(okBtn);
+    } else {
+      const cancelBtn = el('button', {
+        className: 'btn btn-ghost', type: 'button',
+        onclick: () => closeModal(),
+      }, m.cancelLabel || 'Cancel');
+      const confirmBtn = el('button', {
+        className: 'btn ' + (m.danger ? 'btn-primary' : 'btn-accent'),
+        type: 'button',
+        onclick: () => {
+          if (m.type === 'prompt') m.onConfirm && m.onConfirm(inputEl.value);
+          else m.onConfirm && m.onConfirm();
+        },
+      }, m.confirmLabel || 'Confirm');
+      if (m.danger) confirmBtn.style.background = 'var(--nok)';
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
+    }
+    modal.appendChild(actions);
+    backdrop.appendChild(modal);
+    setTimeout(() => { if (inputEl) { inputEl.focus(); inputEl.select(); } }, 50);
+    return backdrop;
+  }
+
+  function renderMenu(m) {
+    const overlay = el('div', {
+      style: 'position:fixed;inset:0;z-index:55',
+      onclick: () => closeMenu(),
+    });
+    const popup = el('div', {
+      className: 'menu-popup',
+      style: 'left:' + Math.max(8, m.x) + 'px; top:' + m.y + 'px',
+      onclick: (e) => e.stopPropagation(),
+    });
+    for (const item of m.items) {
+      const btn = el('button', {
+        className: 'menu-item' + (item.danger ? ' danger' : ''),
+        type: 'button',
+        onclick: () => item.action(),
+      });
+      btn.innerHTML = (item.icon ? Icons[item.icon] : '') + '<span>' + escapeHtml(item.label) + '</span>';
+      popup.appendChild(btn);
+    }
+    overlay.appendChild(popup);
+    return overlay;
+  }
+
+  function renderLoading() {
+    const root = el('div', { className: 'loading-screen' });
+    const sp = el('div', { className: 'spinner' });
+    root.appendChild(sp);
+    root.appendChild(el('div', {}, state.migrating ? 'Importing your data…' : 'Opening your library…'));
+    return root;
+  }
+
+  function renderSignIn() {
+    const root = el('div', { className: 'signin-view' });
+    const card = el('div', { className: 'signin-card' });
+    card.innerHTML =
+      '<h1 class="home-title">Flash<em>cards</em></h1>' +
+      '<p class="signin-subtitle">Sign in with Google to sync your cards across all your devices.</p>';
+    const btn = el('button', { className: 'signin-google-btn', type: 'button', onclick: signInWithGoogle });
+    btn.innerHTML =
+      '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>' +
+      'Sign in with Google';
+    card.appendChild(btn);
+    root.appendChild(card);
+    return root;
+  }
+
+  // ============================================================
+  // Top-level render
+  // ============================================================
+  function render() {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    document.querySelectorAll('[data-overlay]').forEach(n => n.remove());
+
+    if (!state.booted || state.migrating) { app.appendChild(renderLoading()); return; }
+    if (!state.user) { app.appendChild(renderSignIn()); return; }
+    if (state.view === 'home') app.appendChild(renderHome());
+    else if (state.view === 'set') app.appendChild(renderSet());
+    else if (state.view === 'study') app.appendChild(renderStudy());
+
+    if (state.modal) {
+      const wrap = el('div', { 'data-overlay': '1' });
+      wrap.appendChild(renderModal(state.modal));
+      document.body.appendChild(wrap);
+    }
+    if (state.menu) {
+      const wrap = el('div', { 'data-overlay': '1' });
+      wrap.appendChild(renderMenu(state.menu));
+      document.body.appendChild(wrap);
+    }
+    if (state.saving) {
+      const wrap = el('div', { 'data-overlay': '1' });
+      const pill = el('div', { className: 'saving-pill' });
+      pill.innerHTML = '<div class="spinner"></div><span>Saving image…</span>';
+      wrap.appendChild(pill);
+      document.body.appendChild(wrap);
+    }
+  }
+
+  // Keyboard shortcuts in study mode
+  document.addEventListener('keydown', (e) => {
+    if (state.view !== 'study' || !state.study || state.study.completed) return;
+    if (state.modal) return;
+    if (!state.study.flipped) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+    } else {
+      if (e.key === '1' || e.key.toLowerCase() === 'n') { e.preventDefault(); markCard(false); }
+      else if (e.key === '2' || e.key.toLowerCase() === 'o' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault(); markCard(true);
+      }
+    }
+  });
+
+  // ============================================================
+  // Init
+  // ============================================================
+  async function loadUserData() {
+    try {
+      state.sets = await dbGetAllSets();
+      const before = JSON.stringify(state.sets.map(s => ({ id: s.id, c: s.category, p: s.position })));
+      backfillSetCategoriesAndPositions();
+      const after = JSON.stringify(state.sets.map(s => ({ id: s.id, c: s.category, p: s.position })));
+      if (before !== after) {
+        try { await persistAllSetPositions(); } catch (e) { console.warn('Backfill persist failed:', e); }
+      }
+      document.addEventListener('paste', handlePasteEvent);
+    } catch (e) {
+      console.error('Load failed:', e);
+    }
+  }
+
+  function init() {
+    render();
+    auth.onAuthStateChanged(async (user) => {
+      currentUser = user;
+      state.user = user ? { displayName: user.displayName, email: user.email, photoURL: user.photoURL } : null;
+      if (user) {
+        await loadUserData();
+      } else {
+        state.sets = [];
+        state.view = 'home';
+        state.currentSetId = null;
+        state.currentSetCards = [];
+      }
+      state.booted = true;
+      render();
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
