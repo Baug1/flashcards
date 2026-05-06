@@ -1063,13 +1063,15 @@
     margin-bottom: 4px;
     width: fit-content;
   }
-  .set-tile-status-learned { background: #dcfce7; color: #15803d; }
-  .set-tile-status-revised-once { background: #fef3c7; color: #92400e; }
-  .set-tile-status-revised-twice { background: #dbeafe; color: #1d4ed8; }
+  .set-tile-status-initial { background: #dcfce7; color: #15803d; }
+  .set-tile-status-revised-1x { background: #fef3c7; color: #92400e; }
+  .set-tile-status-revised-2x { background: #dbeafe; color: #1d4ed8; }
+  .set-tile-status-needs-attention { background: #fee2e2; color: #b91c1c; }
 
-  .set-tile.has-status-learned .set-tile-meta::before { background: #15803d; }
-  .set-tile.has-status-revised-once .set-tile-meta::before { background: #d97706; }
-  .set-tile.has-status-revised-twice .set-tile-meta::before { background: #2563eb; }
+  .set-tile.has-status-initial .set-tile-meta::before { background: #15803d; }
+  .set-tile.has-status-revised-1x .set-tile-meta::before { background: #d97706; }
+  .set-tile.has-status-revised-2x .set-tile-meta::before { background: #2563eb; }
+  .set-tile.has-status-needs-attention .set-tile-meta::before { background: #dc2626; }
 
   /* Status picker */
   .status-picker { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
@@ -1097,12 +1099,14 @@
     flex-shrink: 0;
     background: var(--muted);
   }
-  .status-option-learned .status-option-dot { background: #15803d; }
-  .status-option-learned.active { color: #15803d; background: #f0fdf4; border-color: #15803d; }
-  .status-option-revised-once .status-option-dot { background: #d97706; }
-  .status-option-revised-once.active { color: #92400e; background: #fffbeb; border-color: #d97706; }
-  .status-option-revised-twice .status-option-dot { background: #2563eb; }
-  .status-option-revised-twice.active { color: #1d4ed8; background: #eff6ff; border-color: #2563eb; }
+  .status-option-initial .status-option-dot { background: #15803d; }
+  .status-option-initial.active { color: #15803d; background: #f0fdf4; border-color: #15803d; }
+  .status-option-revised-1x .status-option-dot { background: #d97706; }
+  .status-option-revised-1x.active { color: #92400e; background: #fffbeb; border-color: #d97706; }
+  .status-option-revised-2x .status-option-dot { background: #2563eb; }
+  .status-option-revised-2x.active { color: #1d4ed8; background: #eff6ff; border-color: #2563eb; }
+  .status-option-needs-attention .status-option-dot { background: #dc2626; }
+  .status-option-needs-attention.active { color: #b91c1c; background: #fff1f2; border-color: #dc2626; }
   .status-option-reset.active { color: var(--muted); background: var(--surface-2); border-color: var(--muted); }
 </style>
 </head>
@@ -2215,7 +2219,7 @@
       onpointerdown: (ev) => onTilePointerDown(set.id, ev),
     });
     tile.setAttribute('data-set-id', set.id);
-    const statusLabels = { 'learned': 'Learned today', 'revised-once': 'Revised once', 'revised-twice': 'Revised twice' };
+    const statusLabels = { 'initial': 'Initial', 'revised-1x': 'Revised 1x', 'revised-2x': 'Revised 2x', 'needs-attention': 'Needs attention' };
     const statusBadge = set.status
       ? '<div class="set-tile-status set-tile-status-' + set.status + '">' + statusLabels[set.status] + '</div>'
       : '';
@@ -2680,10 +2684,11 @@
     if (m.type === 'status-picker') {
       modal.appendChild(el('div', { className: 'modal-title' }, 'Mark set as'));
       const opts = [
-        { value: null,           label: 'No mark (reset)',  cls: 'status-option-reset' },
-        { value: 'learned',      label: 'Learned today',    cls: 'status-option-learned' },
-        { value: 'revised-once', label: 'Revised once',     cls: 'status-option-revised-once' },
-        { value: 'revised-twice',label: 'Revised twice',    cls: 'status-option-revised-twice' },
+        { value: null,              label: 'Empty',            cls: 'status-option-reset' },
+        { value: 'initial',         label: 'Initial',          cls: 'status-option-initial' },
+        { value: 'revised-1x',      label: 'Revised 1x',       cls: 'status-option-revised-1x' },
+        { value: 'revised-2x',      label: 'Revised 2x',       cls: 'status-option-revised-2x' },
+        { value: 'needs-attention', label: 'Needs attention',  cls: 'status-option-needs-attention' },
       ];
       const picker = el('div', { className: 'status-picker' });
       for (const opt of opts) {
