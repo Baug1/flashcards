@@ -1108,6 +1108,26 @@
   .status-option-needs-attention .status-option-dot { background: #dc2626; }
   .status-option-needs-attention.active { color: #b91c1c; background: #fff1f2; border-color: #dc2626; }
   .status-option-reset.active { color: var(--muted); background: var(--surface-2); border-color: var(--muted); }
+
+  /* Card preview overlay */
+  .preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(45, 90, 61, 0.05) 0%, transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(45, 90, 61, 0.04) 0%, transparent 45%);
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px calc(40px + env(safe-area-inset-bottom));
+    animation: previewIn 0.18s ease;
+  }
+  @keyframes previewIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .preview-overlay .flashcard-area { flex: 1; }
 </style>
 </head>
 <body>
@@ -1403,6 +1423,7 @@
     newCard: { label: '', image: null, previewUrl: null },
     saving: false,
     study: null,
+    preview: null,
     modal: null,
     menu: null,
     storage: null,
@@ -1568,6 +1589,9 @@
     if (!s) return;
     openModal({ type: 'status-picker', setId, currentStatus: s.status || null });
   }
+  function openPreview(card) { state.preview = { card, flipped: false }; render(); }
+  function closePreview() { state.preview = null; render(); }
+  function flipPreview() { if (state.preview) { state.preview.flipped = !state.preview.flipped; render(); } }
   async function addCard(setId, label, imageBlob, imageWidth, imageHeight) {
     const cardId = uid();
     const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + cardId);
@@ -2322,7 +2346,11 @@
   }
 
   function renderCardRow(setId, card) {
-    const row = el('div', { className: 'card-row' });
+    const row = el('div', {
+      className: 'card-row',
+      style: 'cursor:pointer',
+      onclick: (e) => { if (!e.target.closest('.card-row-delete')) openPreview(card); },
+    });
     const labelWrap = el('div', { className: 'card-row-label' });
     labelWrap.textContent = card.label;
     labelWrap.appendChild(el('div', { className: 'card-row-meta' }));
@@ -2331,7 +2359,8 @@
       className: 'card-row-delete',
       type: 'button',
       'aria-label': 'Delete card',
-      onclick: async () => {
+      onclick: async (e) => {
+        e.stopPropagation();
         await removeCard(setId, card.id);
         await refreshStorageInfo();
         render();
@@ -2636,6 +2665,48 @@
     return root;
   }
 
+  function renderPreview() {
+    const p = state.preview;
+    const card = p.card;
+    const aspectW = card.imageWidth || 4;
+    const aspectH = card.imageHeight || 3;
+
+    const overlay = el('div', { className: 'preview-overlay' });
+
+    const topbar = el('div', { className: 'topbar' });
+    topbar.appendChild(iconBtn('x', { 'aria-label': 'Close preview', onclick: closePreview }));
+    topbar.appendChild(el('div', { className: 'topbar-title' }, card.label));
+    overlay.appendChild(topbar);
+
+    const area = el('div', { className: 'flashcard-area' });
+    const container = el('div', {
+      className: 'flashcard-container',
+      role: 'button',
+      'aria-label': 'Flip card',
+      tabindex: '0',
+      onclick: () => flipPreview(),
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipPreview(); } },
+    });
+    container.style.setProperty('--card-aspect', aspectW + ' / ' + aspectH);
+    const flashcard = el('div', { className: 'flashcard' + (p.flipped ? ' flipped' : '') });
+
+    const front = el('div', { className: 'flashcard-face flashcard-front' });
+    front.innerHTML =
+      '<div class="flashcard-front-hint">Topic</div>' +
+      '<div class="flashcard-front-label">' + escapeHtml(card.label) + '</div>' +
+      '<div class="flashcard-tap-icon">' + Icons.tap + '<span>Tap to flip</span></div>';
+    flashcard.appendChild(front);
+
+    const back = el('div', { className: 'flashcard-face flashcard-back' });
+    back.innerHTML = '<img src="' + getCardImageUrl(card) + '" alt="' + escapeHtml(card.label) + '">';
+    flashcard.appendChild(back);
+    container.appendChild(flashcard);
+    area.appendChild(container);
+    overlay.appendChild(area);
+
+    return overlay;
+  }
+
   function renderDone(s) {
     const root = el('div', { className: 'done-screen' });
     const mark = el('div', { className: 'done-mark' });
@@ -2821,6 +2892,11 @@
     else if (state.view === 'set') app.appendChild(renderSet());
     else if (state.view === 'study') app.appendChild(renderStudy());
 
+    if (state.preview) {
+      const wrap = el('div', { 'data-overlay': '1' });
+      wrap.appendChild(renderPreview());
+      document.body.appendChild(wrap);
+    }
     if (state.modal) {
       const wrap = el('div', { 'data-overlay': '1' });
       wrap.appendChild(renderModal(state.modal));
@@ -2842,6 +2918,11 @@
 
   // Keyboard shortcuts in study mode
   document.addEventListener('keydown', (e) => {
+    if (state.preview) {
+      if (e.key === 'Escape') { e.preventDefault(); closePreview(); return; }
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipPreview(); return; }
+      return;
+    }
     if (state.view !== 'study' || !state.study || state.study.completed) return;
     if (state.modal) return;
     if (!state.study.flipped) {
