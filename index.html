@@ -1591,7 +1591,12 @@
   }
   function openPreview(card) { state.preview = { card, flipped: false }; render(); }
   function closePreview() { state.preview = null; render(); }
-  function flipPreview() { if (state.preview) { state.preview.flipped = !state.preview.flipped; render(); } }
+  function flipPreview() {
+    if (!state.preview) return;
+    state.preview.flipped = !state.preview.flipped;
+    const fc = document.querySelector('.preview-overlay .flashcard');
+    if (fc) fc.classList.toggle('flipped', state.preview.flipped);
+  }
   async function addCard(setId, label, imageBlob, imageWidth, imageHeight) {
     const cardId = uid();
     const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + cardId);
