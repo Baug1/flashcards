@@ -1427,6 +1427,7 @@
     saving: false,
     study: null,
     preview: null,
+    editingCard: null,
     modal: null,
     menu: null,
     storage: null,
@@ -1629,52 +1630,77 @@
     if (s) s.cardCount = Math.max(0, (s.cardCount || 1) - 1);
   }
 
-  function promptRenameCard(cardId) {
+  function openEditCard(cardId) {
     const card = state.currentSetCards.find(c => c.id === cardId);
     if (!card) return;
-    openModal({
-      type: 'prompt',
-      title: 'Rename card',
-      initialValue: card.label,
-      placeholder: 'Card name',
-      confirmLabel: 'Save',
-      onConfirm: async (value) => {
-        const name = (value || '').trim();
-        if (!name) return;
-        closeModal();
-        card.label = name;
-        await dbUpdateCard(card);
-        render();
-      },
-    });
+    state.editingCard = { card, label: card.label, imageBlob: null, imageWidth: null, imageHeight: null, previewUrl: null };
+    render();
   }
-  function promptChangeCardImage(cardId) {
-    const card = state.currentSetCards.find(c => c.id === cardId);
-    if (!card) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async () => {
-      const file = input.files && input.files[0];
-      if (!file) return;
-      try {
-        const result = await validateImage(file);
-        state.saving = true;
-        render();
-        const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + card.id);
-        await imgRef.put(result.blob);
-        card.imageUrl = await imgRef.getDownloadURL();
-        card.imageWidth = result.width;
-        card.imageHeight = result.height;
-        await dbUpdateCard(card);
-      } catch (err) {
-        openModal({ type: 'alert', title: 'Could not update image', message: err.message || 'Please try a different file.' });
-      } finally {
-        state.saving = false;
-        render();
+  function cancelEditCard() {
+    const ec = state.editingCard;
+    if (ec && ec.previewUrl) URL.revokeObjectURL(ec.previewUrl);
+    state.editingCard = null;
+    render();
+  }
+  async function saveEditCard() {
+    const ec = state.editingCard;
+    if (!ec) return;
+    const newLabel = ec.label.trim();
+    if (!newLabel) return;
+    state.saving = true;
+    render();
+    try {
+      ec.card.label = newLabel;
+      if (ec.imageBlob) {
+        const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + ec.card.id);
+        await imgRef.put(ec.imageBlob);
+        ec.card.imageUrl = await imgRef.getDownloadURL();
+        ec.card.imageWidth = ec.imageWidth;
+        ec.card.imageHeight = ec.imageHeight;
       }
-    };
-    input.click();
+      await dbUpdateCard(ec.card);
+      if (ec.previewUrl) URL.revokeObjectURL(ec.previewUrl);
+      state.editingCard = null;
+    } catch (err) {
+      openModal({ type: 'alert', title: 'Could not save', message: err.message || 'Please try again.' });
+    } finally {
+      state.saving = false;
+      render();
+    }
+  }
+  async function ingestImageBlobForEdit(file) {
+    const ec = state.editingCard;
+    if (!ec) return;
+    try {
+      const result = await validateImage(file);
+      if (ec.previewUrl) URL.revokeObjectURL(ec.previewUrl);
+      ec.imageBlob = result.blob;
+      ec.imageWidth = result.width;
+      ec.imageHeight = result.height;
+      ec.previewUrl = URL.createObjectURL(result.blob);
+      render();
+    } catch (err) {
+      openModal({ type: 'alert', title: 'Could not load image', message: err.message || 'Please try a different file.' });
+    }
+  }
+  async function pasteFromClipboardForEdit() {
+    if (!navigator.clipboard || !navigator.clipboard.read) return;
+    try {
+      const items = await navigator.clipboard.read();
+      let blob = null; let mime = null;
+      for (const item of items) {
+        const imgType = item.types.find(t => t.startsWith('image/'));
+        if (imgType) { blob = await item.getType(imgType); mime = imgType; break; }
+      }
+      if (!blob) {
+        openModal({ type: 'alert', title: 'Nothing to paste', message: 'No image was found on the clipboard.' });
+        return;
+      }
+      const ext = (mime.split('/')[1] || 'png').toLowerCase().split('+')[0];
+      await ingestImageBlobForEdit(new File([blob], 'pasted.' + ext, { type: mime }));
+    } catch (err) {
+      openModal({ type: 'alert', title: 'Could not read clipboard', message: (err && err.message) || 'Press Ctrl+V instead.' });
+    }
   }
 
   // ============================================================
@@ -2382,6 +2408,7 @@
     opts.appendChild(lbl);
     root.appendChild(opts);
 
+    if (state.editingCard) root.appendChild(renderEditCardForm());
     if (state.addingCard) root.appendChild(renderAddCardForm());
 
     if (c === 0 && !state.addingCard) {
@@ -2422,8 +2449,7 @@
           x: rect.right - 160,
           y: rect.bottom + 6,
           items: [
-            { label: 'Rename', icon: 'edit', action: () => { closeMenu(); promptRenameCard(card.id); } },
-            { label: 'Change image', icon: 'upload', action: () => { closeMenu(); promptChangeCardImage(card.id); } },
+            { label: 'Edit card', icon: 'edit', action: () => { closeMenu(); openEditCard(card.id); } },
           ],
         });
       },
@@ -2535,6 +2561,70 @@
     return root;
   }
 
+  function renderEditCardForm() {
+    const ec = state.editingCard;
+    const root = el('div', { className: 'form-card' });
+    root.appendChild(el('div', { className: 'form-card-title' }, 'Edit card'));
+
+    const labelRow = el('div', { className: 'form-row' });
+    labelRow.appendChild(el('label', { className: 'form-label', for: 'editCardLabel' }, 'Label (front)'));
+    const labelInput = el('input', {
+      className: 'input', type: 'text', id: 'editCardLabel',
+      maxlength: '120', value: ec.label,
+    });
+    labelInput.addEventListener('input', (e) => {
+      ec.label = e.target.value;
+      const sb = document.getElementById('saveEditCardBtn');
+      if (sb) sb.disabled = !ec.label.trim() || state.saving;
+    });
+    labelRow.appendChild(labelInput);
+    root.appendChild(labelRow);
+
+    const imgRow = el('div', { className: 'form-row' });
+    imgRow.appendChild(el('label', { className: 'form-label' }, 'Image (back)'));
+
+    const currentUrl = ec.previewUrl || ec.card.imageUrl;
+    const preview = el('div', { className: 'file-preview' });
+    preview.appendChild(el('img', { src: currentUrl, alt: 'Preview' }));
+    preview.appendChild(el('div', { className: 'file-preview-meta' }));
+    const replaceBtn = el('button', {
+      className: 'file-preview-replace', type: 'button',
+      onclick: () => document.getElementById('cardImageEditReplace').click(),
+    }, 'Replace');
+    preview.appendChild(replaceBtn);
+    imgRow.appendChild(preview);
+
+    const hiddenReplace = el('input', {
+      type: 'file', accept: 'image/*', id: 'cardImageEditReplace', style: 'display:none',
+    });
+    hiddenReplace.addEventListener('change', async (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (file) await ingestImageBlobForEdit(file);
+    });
+    imgRow.appendChild(hiddenReplace);
+
+    if (navigator.clipboard && navigator.clipboard.read) {
+      const pasteBtn = el('button', { className: 'paste-btn', type: 'button', onclick: () => pasteFromClipboardForEdit() });
+      pasteBtn.innerHTML = Icons.clipboard + '<span>Paste from clipboard</span>';
+      imgRow.appendChild(pasteBtn);
+    }
+    root.appendChild(imgRow);
+
+    const formActions = el('div', { className: 'form-actions' });
+    formActions.appendChild(el('button', {
+      className: 'btn btn-ghost', type: 'button',
+      onclick: () => cancelEditCard(), disabled: state.saving,
+    }, 'Cancel'));
+    const saveBtn = el('button', {
+      className: 'btn btn-primary', type: 'button', id: 'saveEditCardBtn',
+      onclick: () => saveEditCard(),
+      disabled: !ec.label.trim() || state.saving,
+    }, state.saving ? 'Saving…' : 'Save changes');
+    formActions.appendChild(saveBtn);
+    root.appendChild(formActions);
+    return root;
+  }
+
   function triggerFilePicker() {
     const a = document.getElementById('cardImageInput');
     const b = document.getElementById('cardImageReplace');
@@ -2593,6 +2683,11 @@
     if (!imageFile) return; // nothing to do; let default paste happen (e.g. text into label input)
 
     ev.preventDefault();
+
+    if (state.editingCard) {
+      await ingestImageBlobForEdit(imageFile);
+      return;
+    }
 
     // Auto-open the form if it isn't already
     if (!state.addingCard) {
