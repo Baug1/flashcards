@@ -1238,6 +1238,9 @@
     batch.update(setsRef().doc(card.setId), { cardCount: firebase.firestore.FieldValue.increment(1) });
     await batch.commit();
   }
+  async function dbUpdateCard(card) {
+    await cardsRef().doc(card.id).set(card);
+  }
   async function dbDeleteCard(cardId, setId) {
     try { await stor.ref('users/' + currentUser.uid + '/images/' + cardId).delete(); } catch {}
     const batch = fsdb.batch();
@@ -1624,6 +1627,54 @@
     }
     const s = getSet(setId);
     if (s) s.cardCount = Math.max(0, (s.cardCount || 1) - 1);
+  }
+
+  function promptRenameCard(cardId) {
+    const card = state.currentSetCards.find(c => c.id === cardId);
+    if (!card) return;
+    openModal({
+      type: 'prompt',
+      title: 'Rename card',
+      initialValue: card.label,
+      placeholder: 'Card name',
+      confirmLabel: 'Save',
+      onConfirm: async (value) => {
+        const name = (value || '').trim();
+        if (!name) return;
+        closeModal();
+        card.label = name;
+        await dbUpdateCard(card);
+        render();
+      },
+    });
+  }
+  function promptChangeCardImage(cardId) {
+    const card = state.currentSetCards.find(c => c.id === cardId);
+    if (!card) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        const result = await validateImage(file);
+        state.saving = true;
+        render();
+        const imgRef = stor.ref('users/' + currentUser.uid + '/images/' + card.id);
+        await imgRef.put(result.blob);
+        card.imageUrl = await imgRef.getDownloadURL();
+        card.imageWidth = result.width;
+        card.imageHeight = result.height;
+        await dbUpdateCard(card);
+      } catch (err) {
+        openModal({ type: 'alert', title: 'Could not update image', message: err.message || 'Please try a different file.' });
+      } finally {
+        state.saving = false;
+        render();
+      }
+    };
+    input.click();
   }
 
   // ============================================================
@@ -2354,11 +2405,30 @@
     const row = el('div', {
       className: 'card-row',
       style: 'cursor:pointer',
-      onclick: (e) => { if (!e.target.closest('.card-row-delete')) openPreview(card); },
+      onclick: (e) => { if (!e.target.closest('.card-row-delete') && !e.target.closest('.card-row-menu')) openPreview(card); },
     });
     const labelWrap = el('div', { className: 'card-row-label' });
     labelWrap.textContent = card.label;
     labelWrap.appendChild(el('div', { className: 'card-row-meta' }));
+
+    const menuBtn = el('button', {
+      className: 'card-row-delete card-row-menu',
+      type: 'button',
+      'aria-label': 'Card options',
+      onclick: (e) => {
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        openMenu({
+          x: rect.right - 160,
+          y: rect.bottom + 6,
+          items: [
+            { label: 'Rename', icon: 'edit', action: () => { closeMenu(); promptRenameCard(card.id); } },
+            { label: 'Change image', icon: 'upload', action: () => { closeMenu(); promptChangeCardImage(card.id); } },
+          ],
+        });
+      },
+    });
+    menuBtn.innerHTML = Icons.more;
 
     const del = el('button', {
       className: 'card-row-delete',
@@ -2373,6 +2443,7 @@
     });
     del.innerHTML = Icons.trash;
     row.appendChild(labelWrap);
+    row.appendChild(menuBtn);
     row.appendChild(del);
     return row;
   }
