@@ -2846,8 +2846,12 @@
     const flashcard = el('div', { className: 'flashcard' + (s.flipped ? ' flipped' : '') });
 
     const front = el('div', { className: 'flashcard-face flashcard-front' });
+    const studyTagHtml = card.tag
+      ? '<div class="card-tag card-tag-' + card.tag + '">' + (card.tag === 'important' ? 'Important' : 'Exercise') + '</div>'
+      : '';
     front.innerHTML =
       '<div class="flashcard-front-hint">Topic</div>' +
+      studyTagHtml +
       '<div class="flashcard-front-label">' + escapeHtml(card.label) + '</div>' +
       '<div class="flashcard-tap-icon">' + Icons.tap + '<span>Tap to flip</span></div>';
     flashcard.appendChild(front);
@@ -2903,8 +2907,12 @@
     const flashcard = el('div', { className: 'flashcard' + (p.flipped ? ' flipped' : '') });
 
     const front = el('div', { className: 'flashcard-face flashcard-front' });
+    const previewTagHtml = card.tag
+      ? '<div class="card-tag card-tag-' + card.tag + '">' + (card.tag === 'important' ? 'Important' : 'Exercise') + '</div>'
+      : '';
     front.innerHTML =
       '<div class="flashcard-front-hint">Topic</div>' +
+      previewTagHtml +
       '<div class="flashcard-front-label">' + escapeHtml(card.label) + '</div>' +
       '<div class="flashcard-tap-icon">' + Icons.tap + '<span>Tap to flip</span></div>';
     flashcard.appendChild(front);
