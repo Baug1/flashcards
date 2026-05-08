@@ -1120,8 +1120,8 @@
     text-transform: uppercase;
     padding: 2px 7px;
     border-radius: 20px;
-    width: fit-content;
-    margin-top: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .card-tag-important { background: #fee2e2; color: #b91c1c; }
   .card-tag-exercise  { background: #ede9fe; color: #6d28d9; }
@@ -2471,11 +2471,6 @@
     });
     const labelWrap = el('div', { className: 'card-row-label' });
     labelWrap.textContent = card.label;
-    if (card.tag) {
-      const tagBadge = el('div', { className: 'card-tag card-tag-' + card.tag });
-      tagBadge.textContent = card.tag === 'important' ? 'Important' : 'Exercise';
-      labelWrap.appendChild(tagBadge);
-    }
     labelWrap.appendChild(el('div', { className: 'card-row-meta' }));
 
     const menuBtn = el('button', {
@@ -2510,6 +2505,11 @@
     });
     del.innerHTML = Icons.trash;
     row.appendChild(labelWrap);
+    if (card.tag) {
+      const tagBadge = el('div', { className: 'card-tag card-tag-' + card.tag });
+      tagBadge.textContent = card.tag === 'important' ? 'Important' : 'Exercise';
+      row.appendChild(tagBadge);
+    }
     row.appendChild(menuBtn);
     row.appendChild(del);
     return row;
