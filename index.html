@@ -1109,6 +1109,29 @@
   .status-option-needs-attention.active { color: #b91c1c; background: #fff1f2; border-color: #dc2626; }
   .status-option-reset.active { color: var(--muted); background: var(--surface-2); border-color: var(--muted); }
 
+  /* Card tag badges */
+  .card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 20px;
+    width: fit-content;
+    margin-top: 4px;
+  }
+  .card-tag-important { background: #fee2e2; color: #b91c1c; }
+  .card-tag-exercise  { background: #ede9fe; color: #6d28d9; }
+
+  /* Card tag picker options */
+  .card-tag-option-important .status-option-dot { background: #dc2626; }
+  .card-tag-option-important.active { color: #b91c1c; background: #fff1f2; border-color: #dc2626; }
+  .card-tag-option-exercise .status-option-dot  { background: #7c3aed; }
+  .card-tag-option-exercise.active  { color: #6d28d9; background: #f5f3ff; border-color: #7c3aed; }
+
   /* Card preview overlay */
   .preview-overlay {
     position: fixed;
@@ -1592,6 +1615,18 @@
     const s = getSet(setId);
     if (!s) return;
     openModal({ type: 'status-picker', setId, currentStatus: s.status || null });
+  }
+  function openCardTagPicker(cardId) {
+    const card = state.currentSetCards.find(c => c.id === cardId);
+    if (!card) return;
+    openModal({ type: 'card-tag-picker', cardId, currentTag: card.tag || null });
+  }
+  async function setCardTag(cardId, tag) {
+    const card = state.currentSetCards.find(c => c.id === cardId);
+    if (!card) return;
+    card.tag = tag || null;
+    await dbUpdateCard(card);
+    render();
   }
   function openPreview(card) { state.preview = { card, flipped: false }; render(); }
   function closePreview() { state.preview = null; render(); }
@@ -2436,6 +2471,11 @@
     });
     const labelWrap = el('div', { className: 'card-row-label' });
     labelWrap.textContent = card.label;
+    if (card.tag) {
+      const tagBadge = el('div', { className: 'card-tag card-tag-' + card.tag });
+      tagBadge.textContent = card.tag === 'important' ? 'Important' : 'Exercise';
+      labelWrap.appendChild(tagBadge);
+    }
     labelWrap.appendChild(el('div', { className: 'card-row-meta' }));
 
     const menuBtn = el('button', {
@@ -2450,6 +2490,7 @@
           y: rect.bottom + 6,
           items: [
             { label: 'Edit card', icon: 'edit', action: () => { closeMenu(); openEditCard(card.id); } },
+            { label: 'Mark as…', icon: 'tag', action: () => { closeMenu(); openCardTagPicker(card.id); } },
           ],
         });
       },
@@ -2922,6 +2963,33 @@
       onclick: (e) => { if (e.target === e.currentTarget) closeModal(); },
     });
     const modal = el('div', { className: 'modal' });
+
+    if (m.type === 'card-tag-picker') {
+      modal.appendChild(el('div', { className: 'modal-title' }, 'Tag card as'));
+      const tagOpts = [
+        { value: null,        label: 'None',      cls: 'status-option-reset' },
+        { value: 'important', label: 'Important', cls: 'card-tag-option-important' },
+        { value: 'exercise',  label: 'Exercise',  cls: 'card-tag-option-exercise' },
+      ];
+      const tagPicker = el('div', { className: 'status-picker' });
+      for (const opt of tagOpts) {
+        const isActive = m.currentTag === opt.value;
+        const btn = el('button', {
+          className: 'status-option ' + opt.cls + (isActive ? ' active' : ''),
+          type: 'button',
+          onclick: async () => { closeModal(); await setCardTag(m.cardId, opt.value); },
+        });
+        btn.appendChild(el('span', { className: 'status-option-dot' }));
+        btn.appendChild(el('span', {}, opt.label));
+        tagPicker.appendChild(btn);
+      }
+      modal.appendChild(tagPicker);
+      const tagCancelRow = el('div', { className: 'modal-actions' });
+      tagCancelRow.appendChild(el('button', { className: 'btn btn-ghost', type: 'button', style: 'flex:1', onclick: () => closeModal() }, 'Cancel'));
+      modal.appendChild(tagCancelRow);
+      backdrop.appendChild(modal);
+      return backdrop;
+    }
 
     if (m.type === 'status-picker') {
       modal.appendChild(el('div', { className: 'modal-title' }, 'Mark set as'));
